@@ -95,7 +95,7 @@ def save_test_file(user_event_session, user_last_N_events, file_name):
 
             for session in user_event_session[user]:
                 events = [f'{s[1]}:{s[0]}' for s in session]
-                print('\t'.join(events), file=out_f)
+                print('#'.join(events), file=out_f)
             
 
 
