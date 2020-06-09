@@ -77,7 +77,7 @@ def save_user_event_seqence(user_event_session, file_name):
             for session in user_event_session[user]:
                 if len(session) < 3:    continue
                 events = [f'{s[1]}:{s[0]}' for s in session]
-                print('\t'.join(events), file=out_f)
+                print(' '.join(events), file=out_f)
                 
 
 

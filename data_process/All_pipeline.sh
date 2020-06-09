@@ -9,3 +9,4 @@ dt="2020-05-30"
 	smartad-dmp/warehouse/user/seanchuang/i2i_offline_test_raw/dt=${dt}
 
 # Process Data
+./data_process/0_raw_data_handler.py ${dt} data/${dt}
