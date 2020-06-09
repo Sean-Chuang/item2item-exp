@@ -6,7 +6,7 @@ from common import get_t
 import os
 import argparse
 
-def read_file(file_name, out_dir):
+def read_file(file_name, out_dir=None):
     user_events = defaultdict(list)
     items_view_freq = defaultdict(int)
     items_purchase_freq = defaultdict(int)
@@ -19,10 +19,11 @@ def read_file(file_name, out_dir):
                     items_view_freq[item_id] += 1
                 elif behavior == 'revenue':
                     items_purchase_freq[item_id] += 1
-    with open(f'{out_dir}/items_view_freq.csv', 'w') as f:
-        [print(f'{key}\t{value}', file=f) for key, value in sorted(items_view_freq.items(), key=lambda item: item[1], reverse=True)]
-    with open(f'{out_dir}/items_purchase_freq.csv', 'w') as f:
-        [print(f'{key}\t{value}', file=f) for key, value in sorted(items_purchase_freq.items(), key=lambda item: item[1], reverse=True)]
+    if out_dir:
+        with open(f'{out_dir}/items_view_freq.csv', 'w') as f:
+            [print(f'{key}\t{value}', file=f) for key, value in sorted(items_view_freq.items(), key=lambda item: item[1], reverse=True)]
+        with open(f'{out_dir}/items_purchase_freq.csv', 'w') as f:
+            [print(f'{key}\t{value}', file=f) for key, value in sorted(items_purchase_freq.items(), key=lambda item: item[1], reverse=True)]
     return user_events
 
 # session_period : sec
@@ -117,9 +118,12 @@ if __name__ == '__main__':
     user_events_session_statistic(sessions)
     print(f"[{get_t()}] train data save file")
     save_user_event_seqence(sessions, os.path.join(args.output_dir, 'tr_data.csv'))
+    # release memory
+    events, sessions = None, None
+
     # test
     print(f"[{get_t()}] reading test data events")
-    events = read_file(te_data, args.output_dir)
+    events = read_file(te_data)
     print(f"[{get_t()}] test data session_process")
     sessions, _ = session_process(events, session_period=args.session_period, last_N=args.last_N)
     print(f"[{get_t()}] test data session_statistic")
