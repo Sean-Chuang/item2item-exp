@@ -2,19 +2,27 @@
 # session analysis
 from collections import defaultdict
 from tqdm import tqdm
+from common import get_t
+import os
+import argparse
 
-dt = "2020-05-30"
-tr_data = f"data/{dt}/tr_data/merged.data"
-te_data = f"data/{dt}/te_data/merged.data"
-
-
-def read_file(file_name):
+def read_file(file_name, out_dir):
     user_events = defaultdict(list)
+    items_view_freq = defaultdict(int)
+    items_purchase_freq = defaultdict(int)
     with open(file_name, 'r') as in_f:
         for line in tqdm(in_f):
             ad_id, item_id, behavior, ts = line.strip().split('\t')
             if item_id:
                 user_events[ad_id].append((item_id, behavior, int(ts)))
+                if behavior == 'ViewContent':
+                    items_view_freq[item_id] += 1
+                elif behavior == 'revenue':
+                    items_purchase_freq[item_id] += 1
+    with open(f'{out_dir}/items_view_freq.csv', 'w') as f:
+        [print(f'{key}\t{value}', file=f) for key, value in sorted(items_view_freq.items(), key=lambda item: item[1], reverse=True)]
+    with open(f'{out_dir}/items_purchase_freq.csv', 'w') as f:
+        [print(f'{key}\t{value}', file=f) for key, value in sorted(items_purchase_freq.items(), key=lambda item: item[1], reverse=True)]
     return user_events
 
 # session_period : sec
@@ -101,17 +109,26 @@ if __name__ == '__main__':
     tr_data = f"data/{args.date}/tr_data/merged.data"
     te_data = f"data/{args.date}/te_data/merged.data"
     # train
-    events = read_file(tr_data)
+    print(f"[{get_t()}] reading train data events")
+    events = read_file(tr_data, args.output_dir)
+    print(f"[{get_t()}] train data session_process")
     sessions, last_N_events = session_process(events, session_period=args.session_period, last_N=args.last_N)
+    print(f"[{get_t()}] train data session_statistic")
     user_events_session_statistic(sessions)
+    print(f"[{get_t()}] train data save file")
     save_user_event_seqence(sessions, os.path.join(args.output_dir, 'tr_data.csv'))
     # test
-    events = read_file(te_data)
+    print(f"[{get_t()}] reading test data events")
+    events = read_file(te_data, args.output_dir)
+    print(f"[{get_t()}] test data session_process")
     sessions, _ = session_process(events, session_period=args.session_period, last_N=args.last_N)
+    print(f"[{get_t()}] test data session_statistic")
     user_events_session_statistic(sessions)
-    save_test_file(sessions, sample_last_N_events, os.path.join(args.output_dir, 'tredata.csv'))
+    print(f"[{get_t()}] test data save file")
+    save_test_file(sessions, last_N_events, os.path.join(args.output_dir, 'te_data.csv'))
 
-    # sample_events = read_file('data/sample.csv')
+    # print(f"[{get_t()}] reading sample data events")
+    # sample_events = read_file('data/sample.csv', 'data')
     # sample_sessions, sample_last_N_events = session_process(sample_events, session_period=None)
     # user_events_session_statistic(sample_sessions)
     # save_user_event_seqence(sample_sessions, 'tr_data.csv')
