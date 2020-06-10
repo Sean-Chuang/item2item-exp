@@ -1,7 +1,7 @@
 from model import Model
 
 class POP(Model):
-    requirement = ['item_pop_file', 'test_file', 'topN']
+    requirement = ['item_pop_file', 'test_file', 'lastN', 'topN']
     def config(self, config):
         self.config = config
         miss = set()
@@ -21,8 +21,8 @@ class POP(Model):
                     break
         print("Train finished ...")
  
-    def __predict(self, last_n_events):
-        return self.pop_items[:self.config['topN']]
+    def __predict(self, last_n_events, topN):
+        return self.pop_items[:topN]
 
     def test(self):
         with open(self.config['test_file'], 'r') as in_f:
@@ -30,6 +30,7 @@ class POP(Model):
                 history, predict = line.strip().split('\t')
                 self.history_items.append(history.split('#'))
                 self.predict_items.append(predict.split('#'))
+
 
     @abstractmethod
     def print_metrics(self):

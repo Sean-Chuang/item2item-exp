@@ -10,3 +10,5 @@ dt="2020-05-30"
 
 # Process Data
 ./data_process/0_raw_data_handler.py ${dt} data/${dt}
+
+# Run model
