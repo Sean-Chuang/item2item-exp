@@ -5,6 +5,7 @@ from tqdm import tqdm
 from common import get_t
 import os
 import argparse
+import time
 
 def read_file(file_name, out_dir=None):
     user_events = defaultdict(list)
@@ -120,6 +121,7 @@ if __name__ == '__main__':
     save_user_event_seqence(sessions, os.path.join(args.output_dir, 'tr_data.csv'))
     # release memory
     events, sessions = None, None
+    time.sleep(15)
 
     # test
     print(f"[{get_t()}] reading test data events")
