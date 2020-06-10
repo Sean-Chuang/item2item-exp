@@ -21,10 +21,11 @@ with data as (
   )
   cross join UNNEST(content_ids) as t(content_id)
 )
-select * from data where ad_id != ''
+select * from data where ad_id not in ('',
+                       '00000000-0000-0000-0000-000000000000',
+                       'b809a3a1-c846-41db-b0d4-8910a3fb21c0',
+                       'DEFACE00-0000-0000-0000-000000000000')
 ;
-
-
 
 
 delete from z_seanchuang.i2i_offline_test_raw where dt='${dt}';
@@ -50,5 +51,8 @@ with data as (
   )
   cross join UNNEST(content_ids) as t(content_id)
 )
-select * from data where ad_id != ''
+select * from data where ad_id not in ('',
+                       '00000000-0000-0000-0000-000000000000',
+                       'b809a3a1-c846-41db-b0d4-8910a3fb21c0',
+                       'DEFACE00-0000-0000-0000-000000000000')
 ;
