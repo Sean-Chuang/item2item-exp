@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from metrics import metrics
 import numpy as np
-from ... import logger
+from tqdm import tqdm
 
 class Model(ABC):
 
@@ -27,8 +27,8 @@ class Model(ABC):
     def test(self):
         # "test_file" key is requirement
         with open(self.test_file, 'r') as in_f:
-            for line in in_f:
-                print(line)
+            for line in tqdm(in_f):
+                # print(line)
                 history, predict = line.rstrip().split('\t')
                 history_events = history.split('#')
                 predict_events = predict.split('#')
@@ -45,7 +45,7 @@ class Model(ABC):
 
         # topN res
         for idx, event in enumerate(predict_events):
-            print(f'---------------{idx},{event}-------------', )
+            # print(f'---------------{idx},{event}-------------', )
             # check history_events
             while len(history_events) > self.lastN:
                 history_events.pop(0)
@@ -56,14 +56,14 @@ class Model(ABC):
                 gt = set([purchase_items[0][1]])
                 metrics_map = ['HR', 'MRR', 'NDCG']
                 out = metrics(set(gt), pred, metrics_map)
-                print('[p] :', gt, pred, out)
+                # print('[p] :', gt, pred, out)
                 self.pred_next_purchase_metric.append(out)
 
             # predict the whole day items
             gt = [e.split(':', 1)[1] for e in predict_events[idx:]]
             metrics_map = ['P&R', 'MAP']
             out = metrics(set(gt), pred, metrics_map)
-            print('[whole] :', gt, pred, out)
+            # print('[whole] :', gt, pred, out)
             self.pred_whole_day_metric.append(out[0] + [out[1]])
 
             # check purchase item

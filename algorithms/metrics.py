@@ -2,8 +2,8 @@ import numpy as np
 
 def precision_recall(gt, pred):
     num_hit = len(gt & set(pred))
-    precision = float(num_hit / len(pred))
-    recall = float(num_hit / len(gt))
+    precision = num_hit / (len(pred) if len(pred) != 0 else 1)
+    recall = num_hit / (len(gt) if len(gt) != 0 else 1)
     if precision*recall == 0:
         f1 =  0 
     else: 
@@ -31,8 +31,13 @@ def hit_rate(gt, pred):
 
 
 def mrr(gt, pred, k=None):
+    if k:
+        _pred = pred[:k]
+    else:
+        _pred = pred
+
     score = 0.0
-    for rank, item in enumerate(pred):
+    for rank, item in enumerate(_pred):
         if item in gt:
             score = 1.0 / (rank + 1.0)
             break
