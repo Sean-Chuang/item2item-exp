@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from metrics import metrics
 import numpy as np
 from tqdm import tqdm
+from joblib import Parallel, delayed
 
 class Model(ABC):
 
@@ -27,13 +28,14 @@ class Model(ABC):
     def test(self):
         # "test_file" key is requirement
         with open(self.test_file, 'r') as in_f:
-            for line in tqdm(in_f):
-                # print(line)
-                history, predict = line.rstrip().split('\t')
-                history_events = history.split('#')
-                predict_events = predict.split('#')
-                self._single_user_test(history_events, predict_events)
+            Parallel(n_jobs=10)(delayed(self._line_process)(line) for line in tqdm(in_f))
                 
+    def _line_process(self, line):
+        # print(line)
+        history, predict = line.rstrip().split('\t')
+        history_events = history.split('#')
+        predict_events = predict.split('#')
+        self._single_user_test(history_events, predict_events)
 
     def _single_user_test(self, history_events, predict_events):
         # Get next purchase item
