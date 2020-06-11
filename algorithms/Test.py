@@ -32,7 +32,7 @@ class Test(Model):
 
 
     def test_single_user(self, histroy_events, predict_events):
-        self._single_user_test(histroy_events, predict_events)
+        self.pred_next_purchase_metric , self.pred_whole_day_metric = self._single_user_test(histroy_events, predict_events)
 
 
 if __name__ == '__main__':
