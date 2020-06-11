@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from metrics import metrics
 import numpy as np
+from ... import logger
 
 class Model(ABC):
 
@@ -28,7 +29,7 @@ class Model(ABC):
         with open(self.test_file, 'r') as in_f:
             for line in in_f:
                 print(line)
-                history, predict = line.strip().split('\t')
+                history, predict = line.rstrip().split('\t')
                 history_events = history.split('#')
                 predict_events = predict.split('#')
                 self._single_user_test(history_events, predict_events)
