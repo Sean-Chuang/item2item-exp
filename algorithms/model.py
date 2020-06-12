@@ -47,6 +47,8 @@ class Model(ABC):
         # pred_next_purchase_metric = []
         # pred_whole_day_metric = []
         # Get next purchase item
+        history_events = filter(None, history_events)
+        predict_events = filter(None, predict_events)
         purchase_items = []
         for idx, event in enumerate(predict_events):
             behavior, item = event.split(':', 1)
@@ -99,3 +101,4 @@ class Model(ABC):
                 print(f'{HR:.4f}\t{MRR:.4f}\t{NDCG:.4f}', file=out_f)
                 print('Precison\tRecall\tF1\tMAP', file=out_f)
                 print(f'{Precison:.4f}\t{Recall:.4f}\t{F1:.4f}\t{MAP:.4f}', file=out_f)
+
