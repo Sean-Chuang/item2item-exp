@@ -43,12 +43,13 @@ class Model(ABC):
         predict_events = predict.split('#')
         return self._single_user_test(history_events, predict_events)
 
+
     def _single_user_test(self, history_events, predict_events):
         # pred_next_purchase_metric = []
         # pred_whole_day_metric = []
         # Get next purchase item
-        history_events = filter(None, history_events)
-        predict_events = filter(None, predict_events)
+        history_events = list(filter(None, history_events))
+        predict_events = list(filter(None, predict_events))
         purchase_items = []
         for idx, event in enumerate(predict_events):
             behavior, item = event.split(':', 1)

@@ -11,6 +11,8 @@ def read_file(file_name, out_dir=None):
     user_events = defaultdict(list)
     items_view_freq = defaultdict(int)
     items_purchase_freq = defaultdict(int)
+    item_list = set()
+    behavior_list = set()
     with open(file_name, 'r') as in_f:
         for line in tqdm(in_f):
             ad_id, item_id, behavior, ts = line.strip().split('\t')
@@ -20,11 +22,20 @@ def read_file(file_name, out_dir=None):
                     items_view_freq[item_id] += 1
                 elif behavior == 'revenue':
                     items_purchase_freq[item_id] += 1
+                item_list.add(item_id)
+                behavior_list.add(behavior + ':' + item_id)
     if out_dir:
         with open(f'{out_dir}/items_view_freq.csv', 'w') as f:
             [print(f'{key}\t{value}', file=f) for key, value in sorted(items_view_freq.items(), key=lambda item: item[1], reverse=True)]
         with open(f'{out_dir}/items_purchase_freq.csv', 'w') as f:
             [print(f'{key}\t{value}', file=f) for key, value in sorted(items_purchase_freq.items(), key=lambda item: item[1], reverse=True)]
+
+        with open(f'{out_dir}/user_idx.csv', 'w') as f:
+            [print(f'{key}\t{idx}', file=f) for idx, key in enumerate(list(user_events.keys()))]
+        with open(f'{out_dir}/item_idx.csv', 'w') as f:
+            [print(f'{key}\t{idx}', file=f) for idx, key in enumerate(list(item_list))]
+        with open(f'{out_dir}/behavior_idx.csv', 'w') as f:
+            [print(f'{key}\t{idx}', file=f) for idx, key in enumerate(list(behavior_list))]
     return user_events
 
 # session_period : sec
