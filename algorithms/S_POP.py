@@ -24,7 +24,7 @@ class S_POP(Model):
  
 
     def predict(self, last_n_events, topN):
-        return last_n_events[:topN]
+        return [e.split(':', 1)[1] for e in last_n_events[-topN:]]
 
 
 
