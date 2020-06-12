@@ -84,12 +84,18 @@ class Model(ABC):
             history_events.append(event)
         # return pred_next_purchase_metric, pred_whole_day_metric
 
-    def print_metrics(self):
+    def print_metrics(self, file_name=None):
         a = np.array(self.pred_next_purchase_metric)
         b = np.array(self.pred_whole_day_metric)
         HR, MRR, NDCG = np.mean(a, axis=0).tolist()
         Precison, Recall, F1, MAP = np.mean(b, axis=0).tolist()
         print('HR\tMRR\tNDCG')
-        print(f'{HR}\t{MRR}\t{NDCG}')
+        print(f'{HR:.4f}\t{MRR:.4f}\t{NDCG:.4f}')
         print('Precison\tRecall\tF1\tMAP')
-        print(f'{Precison}\t{Recall}\t{F1}\t{MAP}')
+        print(f'{Precison:.4f}\t{Recall:.4f}\t{F1:.4f}\t{MAP:.4f}')
+        if file_name:
+            with open(file_name, 'w') as out_f:
+                print('HR\tMRR\tNDCG', file=out_f)
+                print(f'{HR:.4f}\t{MRR:.4f}\t{NDCG:.4f}', file=out_f)
+                print('Precison\tRecall\tF1\tMAP', file=out_f)
+                print(f'{Precison:.4f}\t{Recall:.4f}\t{F1:.4f}\t{MAP:.4f}', file=out_f)
