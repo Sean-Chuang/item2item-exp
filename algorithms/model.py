@@ -3,6 +3,7 @@ from metrics import metrics
 import numpy as np
 from tqdm import tqdm
 from joblib import Parallel, delayed
+import diskcache as dc
 
 class Model(ABC):
 
@@ -10,8 +11,8 @@ class Model(ABC):
         self.test_file = test_file
         self.lastN = lastN
         self.topN = topN
-        self.pred_next_purchase_metric = []
-        self.pred_whole_day_metric = []
+        self.pred_next_purchase_metric = dc.Deque()
+        self.pred_whole_day_metric = dc.Deque()
 
  
     @abstractmethod
@@ -28,13 +29,9 @@ class Model(ABC):
     def test(self):
         # "test_file" key is requirement
         with open(self.test_file, 'r') as in_f:
-            for line in tqdm(in_f):
-                self._line_process(line)
-
-        #     res = Parallel(n_jobs=10)(delayed(self._line_process)(line) for line in tqdm(in_f))
-        # for x, y in res:
-        #     self.pred_next_purchase_metric.extend(x)
-        #     self.pred_whole_day_metric.extend(y)
+            # for line in tqdm(in_f):
+            #     self._line_process(line)
+            res = Parallel(n_jobs=10)(delayed(self._line_process)(line) for line in tqdm(in_f))
 
     def _line_process(self, line):
         # print(line)
