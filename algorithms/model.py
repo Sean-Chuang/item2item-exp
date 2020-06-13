@@ -48,6 +48,7 @@ class Model(ABC):
         # pred_next_purchase_metric = []
         # pred_whole_day_metric = []
         # Get next purchase item
+        # print('[Input]', history_events, predict_events)
         history_events = list(filter(None, history_events))
         predict_events = list(filter(None, predict_events))
         purchase_items = []

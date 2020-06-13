@@ -1,8 +1,9 @@
 # Condition Probability Knn
 from model import Model
 import numpy as np
-from scipy.sparse import lil_matrix
+from scipy.sparse import dok_matrix, csc_matrix
 from tqdm import tqdm
+import time, sys
 
 class CP_kNN(Model):
     
@@ -43,7 +44,7 @@ class CP_kNN(Model):
 
 
     def train(self):
-        self.user_item_table = lil_matrix((len(self.user_idx), len(self.item_idx)), dtype=np.float)
+        self.user_item_table = dok_matrix((len(self.user_idx), len(self.item_idx)), dtype=np.float)
         # Build the sparse metric for user-item or user-behavior
         print('Matrix size : ', self.user_item_table.shape)
         with open(self.config['train_raw_file'], 'r') as in_f:
@@ -51,16 +52,17 @@ class CP_kNN(Model):
                 ad_id, item_id, behavior, ts = line.strip().split('\t')
                 if item_id:
                     self.user_item_table[self.user_idx[ad_id], self.item_idx[item_id]] += 1.0
-
+        self.user_item_table = self.user_item_table.tocsr() 
+        self.item_nonzero_count = np.bincount(self.user_item_table.indices)
         print("Train finished ...")
 
 
     def __item_item_score(self, given_idx, candidate_idx, alpha=0.5):
         # Given v: 
         #   sim(u, v) = freq(u & v) / (freq(v) * freq(u)^0.5)
+        s_time = time.time()
         freq_u_v = self.user_item_table[:,given_idx].multiply(self.user_item_table[:,candidate_idx]).count_nonzero()
-        freq_v = self.user_item_table[:,given_idx].count_nonzero()
-        freq_u = self.user_item_table[:,candidate_idx].count_nonzero()
+        freq_u, freq_v = self.item_nonzero_count[candidate_idx], self.item_nonzero_count[given_idx]
         score = freq_u_v / (freq_v * (freq_u ** alpha))
         return score
 
@@ -72,8 +74,8 @@ class CP_kNN(Model):
 
 
     def __item_similarity(self, given_idx, topK):
-        u_idx = np.nonzero(self.user_item_table[:,given_idx])[0]
-        candidate_item_idx = np.nonzero(self.user_item_table[u_idx].sum(axis=0))[1]
+        u_idx = self.user_item_table[:,given_idx].nonzero()[0]
+        candidate_item_idx = np.unique(self.user_item_table[u_idx].nonzero()[1])
         items_score = {}
         for idx in candidate_item_idx:
             items_score[idx] = self.__item_item_score(given_idx, idx)
@@ -94,10 +96,9 @@ class CP_kNN(Model):
 
         rank_weight = np.array([1 / np.log2(rank + 2) for rank in range(len(last_n_items))])
         final_score = rank_weight.dot(score_matric).tolist()
-        print(list(zip(candidate_list, final_score)))
+        # print(list(zip(candidate_list, final_score)))
         final_items = sorted(zip(candidate_list, final_score), key=lambda x:x[1], reverse=True)
-
-        return [item for item, score in final_items[:topN]]
+        return [self.item_idx_reverse[item] for item, score in final_items[:topN]]
 
 
 
