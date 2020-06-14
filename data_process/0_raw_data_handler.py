@@ -17,6 +17,7 @@ def read_file(file_name, out_dir=None):
         for line in tqdm(in_f):
             ad_id, item_id, behavior, ts = line.strip().split('\t')
             if item_id:
+                item_id = item_id.replace(' ', '')
                 user_events[ad_id].append((item_id, behavior, int(ts)))
                 if behavior == 'ViewContent':
                     items_view_freq[item_id] += 1
