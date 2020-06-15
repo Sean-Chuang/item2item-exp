@@ -27,7 +27,8 @@ def average_precision(gt, pred):
 
 def hit_rate(gt, pred):
     intersec = len(gt & set(pred))
-    return intersec / max(1, float(len(gt)))
+    # return intersec / max(1, float(len(gt)))
+    return intersec / len(gt)
 
 
 def mrr(gt, pred, k=None):
@@ -105,7 +106,7 @@ def metrics(gt, pred, metrics_map):
 if __name__ == '__main__':
     # test predict the next purchase item
     metrics_map = ['HR', 'MRR', 'MRR@10', 'NDCG']
-    gt = set([3])
+    gt = set([3, 5])
     pred = [1,6,7,8,3,4]
     print(metrics(gt, pred, metrics_map))
     # test predict follow items

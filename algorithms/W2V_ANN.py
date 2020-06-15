@@ -7,7 +7,7 @@ class W2V_ANN(Model):
     
     def __init__(self, config):
         self.requirement = ['test_file', 'lastN', 'topN',
-                            'item_vec_file', 'index_file_file']
+                            'type', 'item_vec_file', 'index_file_file']
         self.config = config
         miss = set()
         for item in self.requirement:
@@ -21,12 +21,14 @@ class W2V_ANN(Model):
                 self.config['lastN'],
                 self.config['topN']
             )
+        self.type = config['type']  # behavior / item
 
 
     def train(self):
         b_time = time.time()
         self.item_idx = {}
         self.item_idx_reverse = {}
+
         with open(self.config['item_vec_file'], 'r') as in_f:
             num_items, dim = in_f.readline().strip().split()
             print(f'Num of items : {num_items}, dim : {dim}')
@@ -37,7 +39,7 @@ class W2V_ANN(Model):
                 self.item_idx[tmp[0]] = idx
                 self.item_idx_reverse[idx] = tmp[0]
                 self.t.add_item(idx, list(map(float, tmp[1:])))
-        print("Build index finished ...")
+        print("Read file finished ...")
 
         self.t.build(100) # 10 trees
         file_name = self.config['index_file_file']
@@ -48,8 +50,11 @@ class W2V_ANN(Model):
     def predict(self, last_n_events, topN):
         b_time = time.time()
         candidate_set = set()
-        # last_n_items = [self.item_idx[e.split(':', 1)[1]] for e in last_n_events[::-1]]
-        last_n_items = [self.item_idx[e] for e in last_n_events[::-1] if e in self.item_idx]
+        if self.type == 'item':
+            last_n_items = [self.item_idx[e.split(':', 1)[1]] for e in last_n_events[::-1]]
+        else:
+            last_n_items = [self.item_idx[e] for e in last_n_events[::-1] if e in self.item_idx]
+        
         if len(last_n_items) == 0:
             return []
 
@@ -71,8 +76,10 @@ class W2V_ANN(Model):
         res = []
         for item, score in final_items[:topN]:
             try:
-                res.append(self.item_idx_reverse[item].split(':', 1)[1])
-                # res.append(self.item_idx_reverse[item])
+                if self.type == 'item':
+                    res.append(self.item_idx_reverse[item])
+                else:
+                    res.append(self.item_idx_reverse[item].split(':', 1)[1])
             except:
                 pass
         return res
@@ -94,7 +101,8 @@ if __name__ == '__main__':
     config = {
         'test_file': '../te_data.csv', 
         'lastN': 10, 
-        'topN': 10, 
+        'topN': 10,
+        'type': 'behavior',
         'item_vec_file': '../data/sample_model.vec',
         'index_file_file': '../tmp/sample'
     }
