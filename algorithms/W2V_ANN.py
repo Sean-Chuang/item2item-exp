@@ -32,7 +32,7 @@ class W2V_ANN(Model):
         with open(self.config['item_vec_file'], 'r') as in_f:
             num_items, dim = in_f.readline().strip().split()
             print(f'Num of items : {num_items}, dim : {dim}')
-            self.t = AnnoyIndex(int(dim), 'dot')
+            self.t = AnnoyIndex(int(dim), 'angular')
             
             for idx, line in enumerate(in_f):
                 tmp = line.split()
@@ -90,8 +90,8 @@ class W2V_ANN(Model):
 
 
     def __item_item_arr_norm_score(self, given_idx, candidate_idx_arr):
-        res = [self.t.get_distance(given_idx, candidate_idx) for candidate_idx in candidate_idx_arr]
-        # print(given_idx, sorted(zip(candidate_idx_arr, res), key=lambda x:x[1], reverse=True))
+        res = [1-self.t.get_distance(given_idx, candidate_idx) for candidate_idx in candidate_idx_arr]
+        print(given_idx, sorted(zip(candidate_idx_arr, res), key=lambda x:x[1], reverse=True))
         res = np.array(res)
         return  res / np.linalg.norm(res)
 
