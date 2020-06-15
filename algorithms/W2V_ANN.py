@@ -7,7 +7,7 @@ class W2V_ANN(Model):
     
     def __init__(self, config):
         self.requirement = ['test_file', 'lastN', 'topN',
-                            'item_vec_file', 'item_idx', 'behavior_idx', 'index_file_file']
+                            'item_vec_file', 'index_file_file']
         self.config = config
         miss = set()
         for item in self.requirement:
@@ -96,8 +96,6 @@ if __name__ == '__main__':
         'lastN': 10, 
         'topN': 10, 
         'item_vec_file': '../data/sample_model.vec',
-        'item_idx': '../data/item_idx.csv',
-        'behavior_idx': '../data/behavior_idx.csv',
         'index_file_file': '../tmp/sample'
     }
     model = W2V_ANN(config)
