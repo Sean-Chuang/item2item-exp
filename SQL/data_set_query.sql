@@ -1,4 +1,4 @@
-delete from z_seanchuang.i2i_offline_train_raw where dt='${dt}';
+delete from z_seanchuang.i2i_offline_train_raw where dt='2020-05-30';
 insert into z_seanchuang.i2i_offline_train_raw
 with data as ( 
   select 
@@ -6,7 +6,7 @@ with data as (
       regexp_replace(content_id, '^([0-9]+):([0-9a-zA-Z\-_]+):([0-9]+)$', '$2:$3') as content_id,
       replace(behavior_types, 'adjust:callback:','') as behavior_types,
       ts,
-      '${dt}' as dt
+      '2020-05-30' as dt
   from 
   (
      select 
@@ -15,8 +15,8 @@ with data as (
          j(ROW, '$._m') as behavior_types,
          cast(j(ROW, '$.timestamp') as bigint) as ts
      from hive_ad.default.ad_tracker_plain atp
-     where atp.dt > date_format(date_add('day', -7, date('${dt}')),'%Y-%m-%d')
-       and atp.dt <= '${dt}'
+     where atp.dt > date_format(date_add('day', -7, date('2020-05-30')),'%Y-%m-%d')
+       and atp.dt <= '2020-05-30'
        and j(ROW, '$._d.StoreId') in ('jp.co.rakuten.android', '419267350')
   )
   cross join UNNEST(content_ids) as t(content_id)
@@ -28,7 +28,7 @@ select * from data where ad_id not in ('',
 ;
 
 
-delete from z_seanchuang.i2i_offline_test_raw where dt='${dt}';
+delete from z_seanchuang.i2i_offline_test_raw where dt='2020-05-30';
 insert into z_seanchuang.i2i_offline_test_raw
 with data as (
   select 
@@ -36,7 +36,7 @@ with data as (
       regexp_replace(content_id, '^([0-9]+):([0-9a-zA-Z\-_]+):([0-9]+)$', '$2:$3') as content_id,
       replace(behavior_types, 'adjust:callback:','') as behavior_types,
       ts,
-      '${dt}' as dt
+      '2020-05-30' as dt
   from 
   (
      select 
@@ -45,8 +45,8 @@ with data as (
          j(ROW, '$._m') as behavior_types,
          cast(j(ROW, '$.timestamp') as bigint) as ts
      from hive_ad.default.ad_tracker_plain atp
-     where atp.dt > '${dt}'
-       and atp.dt <= date_format(date_add('day', 1, date('${dt}')),'%Y-%m-%d')
+     where atp.dt > '2020-05-30'
+       and atp.dt <= date_format(date_add('day', 1, date('2020-05-30')),'%Y-%m-%d')
        and j(ROW, '$._d.StoreId') in ('jp.co.rakuten.android', '419267350')
   )
   cross join UNNEST(content_ids) as t(content_id)
