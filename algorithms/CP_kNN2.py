@@ -40,8 +40,9 @@ class CP_kNN(Model):
                 self.behavior_idx[behavior] = int(idx)
                 self.behavior_idx_reverse[int(idx)] = behavior 
 
+
     def train(self):
-        # self.user_item_matrix = csr_matrix()
+        b_time = time.time()
         Y = []
         with open(self.config['train_file'], 'r') as in_f:
             for idx, line in tqdm(enumerate(in_f)):
@@ -51,69 +52,29 @@ class CP_kNN(Model):
         indptr = np.fromiter(chain((0,), map(len, Y)), int, len(Y) + 1).cumsum()
         indices = np.fromiter(chain.from_iterable(Y), int, indptr[-1])
         data = np.ones_like(indices)
-        self.user_item_table = csr_matrix((data, indices, indptr), (len(Y), len(self.item_idx)))
-        self.item_nonzero_count = np.bincount(self.user_item_table.indices)
-        print('Matrix size : ', self.user_item_table.shape)
-        print("Train finished ...")
-
-
-    def __item_item_score(self, given_idx, candidate_idx, alpha=0.5):
-        # Given v: 
-        #   sim(u, v) = freq(u & v) / (freq(v) * freq(u)^0.5)
-        s_time = time.time()
-        # freq_u_v = self.user_item_table[:,given_idx].multiply(self.user_item_table[:,candidate_idx]).count_nonzero()
-        freq_u_v = len(self.user_item_table[:,given_idx].nonzero()[0] & self.user_item_table[:,candidate_idx].nonzero()[0])
-        freq_u, freq_v = self.item_nonzero_count[candidate_idx], self.item_nonzero_count[given_idx]
-        score = freq_u_v / (freq_v * (freq_u ** alpha))
-        print(time.time() - s_time)
-        return score
-
-
-    def __item_similarity_score(self, given_idx, user_idx, candidate_idx_arr, alpha=0.5):
-        """
-        Given v: 
-          sim(u, v) = freq(u & v) / (freq(v) * freq(u)^0.5)
-        """
-        if user_idx is None:
-            tmp_matrix = self.user_item_table[:,candidate_idx_arr]
-        else:    
-            tmp_matrix = self.user_item_table[user_idx][:,candidate_idx_arr]
-        
-            
-        tmp_matrix_nonzero_count = np.bincount(tmp_matrix.indices)
-        items_score = {}
-        for idx, item_idx in enumerate(candidate_idx_arr):
-            freq_u_v = tmp_matrix_nonzero_count[idx]
-            freq_u, freq_v = self.item_nonzero_count[item_idx], self.item_nonzero_count[given_idx]
-            items_score[item_idx] = freq_u_v / (freq_v * (freq_u ** alpha))
-        return items_score
-
-
-    def __item_item_arr_norm_score(self, given_idx, candidate_idx_arr, alpha=0.5):
-        items_score = self.__item_similarity_score(given_idx, None, candidate_idx_arr)
-        res = [items_score[item_idx] for item_idx in candidate_idx_arr]
-        res = np.array(res)
-        return  res / np.linalg.norm(res)
-
-
-    def __item_similarity(self, given_idx, topK):
-        s_time = time.time()
-        u_idx = self.user_item_table[:,given_idx].nonzero()[0]
-        candidate_item_idx = np.unique(self.user_item_table[u_idx].nonzero()[1])
-        items_score = self.__item_similarity_score(given_idx, u_idx, candidate_item_idx)
-        # print(f'#user:{len(u_idx)}, #candidate_item:{len(candidate_item_idx)}')
-        if len(candidate_item_idx) > 0:
-            print('[time|similar_k]', time.time() - s_time)
-        return [k for k, v in sorted(items_score.items(), key=lambda item: item[1], reverse=True)]
+        self.user_item_table_csr = csr_matrix((data, indices, indptr))
+        self.user_item_table_lil = self.user_item_table_csr.tolil()
+        self.user_item_table_csc = self.user_item_table_csr.tocsc()
+        self.item_nonzero_count = self.user_item_table_csr.getnnz(axis=0)
+        self.max_column_idx = self.user_item_table_csr.shape[1]
+        print('Matrix size : ', self.user_item_table_csr.shape)
+        print("Train finished ... : ", time.time() - b_time)
 
 
     def predict(self, last_n_events, topN):
         candidate_set = set()
         last_n_items = [self.item_idx[e.split(':', 1)[1]] for e in last_n_events[::-1]]
         for item_idx in last_n_items:
-            candidate = self.__item_similarity(item_idx, topN)
-            print(item_idx, self.item_idx_reverse[item_idx], candidate)
-            candidate_set.update(candidate)
+            if item_idx >= self.max_column_idx:
+                continue
+            _similar_res = self.__item_similarity(item_idx, topN)
+            print(_similar_res)
+            candidate_set.update([_item for _item, score in _similar_res])
+
+        candidate_set -= set(last_n_items)
+        print('candidate_set', candidate_set)
+        if len(candidate_set) == 0:
+            return []
 
         candidate_list = list(candidate_set)
         score_matric = np.zeros((len(last_n_items), len(candidate_list)))
@@ -124,6 +85,32 @@ class CP_kNN(Model):
         # print(last_n_items, list(zip(candidate_list, final_score)))
         final_items = sorted(zip(candidate_list, final_score), key=lambda x:x[1], reverse=True)
         return [self.item_idx_reverse[item] for item, score in final_items[:topN]]
+
+
+    def __item_similarity(self, given_idx, topK, alpha=0.5):
+        b_time = time.time()
+        # print('given_idx', given_idx)
+        u_idx = self.user_item_table_csc[:,given_idx].nonzero()[0]
+        candidate_item_idx = np.unique(self.user_item_table_lil[u_idx].nonzero()[1])
+        # print(f'u_idx : {len(u_idx)}, candidate_item_idx: {len(candidate_item_idx)}')
+        tmp_matrix = self.user_item_table_lil[u_idx][:,candidate_item_idx]
+        tmp_nonzero_count = tmp_matrix.getnnz(axis=0)
+        _score = tmp_nonzero_count / (self.item_nonzero_count[given_idx] * self.item_nonzero_count[candidate_item_idx]**alpha)
+        res = sorted(zip(candidate_item_idx, _score), key=lambda x: x[1], reverse=True)
+        # print(given_idx, res)
+        # print('Time : ', time.time() - b_time)
+        return res
+
+
+    def __item_item_arr_norm_score(self, given_idx, candidate_idx_arr, alpha=0.5):
+        b_time = time.time()
+        # print(given_idx, candidate_idx_arr)
+        u_idx = self.user_item_table_csc[:,given_idx].nonzero()[0]
+        tmp_matrix = self.user_item_table_lil[u_idx][:,candidate_idx_arr]
+        tmp_nonzero_count = tmp_matrix.getnnz(axis=0)
+        res = tmp_nonzero_count / (self.item_nonzero_count[given_idx] * self.item_nonzero_count[candidate_idx_arr]**alpha)
+        # print('Time : ', time.time() - b_time)
+        return  res / np.linalg.norm(res)
 
 
 

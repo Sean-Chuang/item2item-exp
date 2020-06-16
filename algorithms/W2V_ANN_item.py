@@ -2,6 +2,7 @@ from model import Model
 import numpy as np
 from annoy import AnnoyIndex
 import time
+from tqdm import tqdm
 
 class W2V_ANN(Model):
     
@@ -34,16 +35,19 @@ class W2V_ANN(Model):
             print(f'Num of items : {num_items}, dim : {dim}')
             self.t = AnnoyIndex(int(dim), 'angular')
             
-            for idx, line in enumerate(in_f):
+            for idx, line in tqdm(enumerate(in_f)):
                 tmp = line.split()
                 self.item_idx[tmp[0]] = idx
                 self.item_idx_reverse[idx] = tmp[0]
                 self.t.add_item(idx, list(map(float, tmp[1:])))
         print("Read file finished ...")
-
-        self.t.build(100) # 10 trees
         file_name = self.config['index_file_file']
+
+        self.t.build(30) # 10 trees
         self.t.save(f'{file_name}.ann')
+
+        # self.t.load(f'{file_name}.ann')
+
         print(f"Train finished ...{time.time() - b_time}")
  
 
@@ -62,6 +66,7 @@ class W2V_ANN(Model):
             candidate = self.__item_topK_similar(item_idx, topN)
             candidate_set.update(candidate)
 
+        candidate_set -= set(last_n_items)
         candidate_list = list(candidate_set)
         score_matric = np.zeros((len(last_n_items), len(candidate_list)))
         for i, item_id in enumerate(last_n_items):
@@ -69,19 +74,25 @@ class W2V_ANN(Model):
 
         rank_weight = np.array([1 / np.log2(rank + 2) for rank in range(len(last_n_items))])
         final_score = rank_weight.dot(score_matric).tolist()
-        # print(list(zip(candidate_list, final_score)))
+        # print(last_n_items, list(zip(candidate_list, final_score)))
         final_items = sorted(zip(candidate_list, final_score), key=lambda x:x[1], reverse=True)
         # print(f"[Time|Preict] {time.time()-b_time}")
 
         res = []
-        for item, score in final_items[:topN]:
+        for item, score in final_items:
             try:
                 if self.type == 'item':
-                    res.append(self.item_idx_reverse[item])
+                    item_raw = self.item_idx_reverse[item]
                 else:
-                    res.append(self.item_idx_reverse[item].split(':', 1)[1])
+                    item_raw = self.item_idx_reverse[item].split(':', 1)[1]
+
+                if item_raw in res:
+                    continue
+                res.append(item_raw)
             except:
                 pass
+            if len(res) == topN:
+                break
         return res
 
 
@@ -91,7 +102,7 @@ class W2V_ANN(Model):
 
     def __item_item_arr_norm_score(self, given_idx, candidate_idx_arr):
         res = [1-self.t.get_distance(given_idx, candidate_idx) for candidate_idx in candidate_idx_arr]
-        print(given_idx, sorted(zip(candidate_idx_arr, res), key=lambda x:x[1], reverse=True))
+        # print(given_idx, sorted(zip(candidate_idx_arr, res), key=lambda x:x[1], reverse=True))
         res = np.array(res)
         return  res / np.linalg.norm(res)
 
