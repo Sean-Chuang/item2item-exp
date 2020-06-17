@@ -30,7 +30,7 @@ class CP_kNN(Model):
     def train(self):
         b_time = time.time()
         cursor = presto.connect('presto.smartnews.internal',8081).cursor()
-        query = "select * from z_seanchuang.i2i_offline_item_topk_items"
+        query = "select * from hive_ad.z_seanchuang.i2i_offline_item_topk_items"
         cursor.execute(query)
         column_names = [desc[0] for desc in cursor.description]
         df = pd.DataFrame(cursor.fetchall(), columns=column_names)
@@ -47,7 +47,7 @@ class CP_kNN(Model):
             last_n_items = [e for e in last_n_events[::-1]]
         
         for item_idx in last_n_items:
-            _similar_res = self.__item_similarity(item_idx, topN)
+            _similar_res = self.__item_similarity(item_idx, topN+5)
             candidate_set.update([_item for _item, score in _similar_res])
 
         candidate_set -= set(last_n_items)
@@ -63,7 +63,7 @@ class CP_kNN(Model):
         final_score = rank_weight.dot(score_matric).tolist()
         # print(last_n_items, list(zip(candidate_list, final_score)))
         final_items = sorted(zip(candidate_list, final_score), key=lambda x:x[1], reverse=True)
-        return [self.item_idx_reverse[item] for item, score in final_items[:topN]]
+        return [item for item, score in final_items[:topN]]
 
 
     def __item_similarity(self, item, topK):
@@ -75,7 +75,8 @@ class CP_kNN(Model):
         res = np.zeros(len(candidate_item_arr))
         for x in self.items_similar[item]:
             _item, _score = x.split('=')
-            res[candidate_item_arr.index(_item)] = float(_score)
+            if _item in candidate_item_arr:
+                res[candidate_item_arr.index(_item)] = float(_score)
         return res / np.linalg.norm(res)
 
 
