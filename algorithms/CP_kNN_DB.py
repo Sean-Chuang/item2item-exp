@@ -25,12 +25,13 @@ class CP_kNN(Model):
                 self.config['topN']
             )
         self.type = config['type']  # behavior / item
+        self.dt = config['dt']
 
 
     def train(self):
         b_time = time.time()
         cursor = presto.connect('presto.smartnews.internal',8081).cursor()
-        query = "select * from hive_ad.z_seanchuang.i2i_offline_item_topk_items"
+        query = f"select * from hive_ad.z_seanchuang.i2i_offline_item_topk_items where dt={self.dt}"
         cursor.execute(query)
         column_names = [desc[0] for desc in cursor.description]
         df = pd.DataFrame(cursor.fetchall(), columns=column_names)
@@ -86,6 +87,7 @@ if __name__ == '__main__':
         'test_file': '../te_data.csv', 
         'lastN': 10, 
         'topN': 10,
+        'dt' : '2020-05-30-user-w',
         'train_file': '../tr_data.csv',
         'item_idx': '../data/item_idx.csv',
         'behavior_idx': '../data/behavior_idx.csv'
