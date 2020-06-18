@@ -60,7 +60,7 @@ class W2V_ANN(Model):
         for idx in tmp_vector:
             self.t.add_item(idx, tmp_vector[idx].to_list())
         print("Read file finished ...")
-        file_name = self.config['index_file_file']
+        file_name = self.config['index_file_file'] + '.' + self.type 
 
         self.t.build(30) # 10 trees
         self.t.save(f'{file_name}.ann')
