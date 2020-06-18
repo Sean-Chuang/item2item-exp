@@ -38,7 +38,10 @@ class W2V_ANN(Model):
             for idx, line in tqdm(enumerate(in_f)):
                 tmp = line.split()
                 if self.type == 'item':
-                    action, item_org = tmp[0].split(':', 1) 
+                    try:
+                        action, item_org = tmp[0].split(':', 1)
+                    except:
+                        continue
                 else:
                     action = None
                     item_org = tmp[0]
@@ -46,14 +49,17 @@ class W2V_ANN(Model):
                 if item_org not in self.item_idx:
                     self.item_idx[item_org] = idx
                     self.item_idx_reverse[idx] = item_org
-                
-                if self.type == 'item':
-                    tmp_vector[idx] += np.array(tmp[1:]) * self.action_w[action]
+                    tmp_vector[idx] = np.zeros(int(dim))
                 else:
-                    tmp_vector[idx] = np.array(tmp[1:])
+                    idx = self.item_idx[item_org]
+
+                if self.type == 'item':
+                    tmp_vector[idx] += np.array(tmp[1:], dtype=float) * self.action_w[action]
+                else:
+                    tmp_vector[idx] += np.array(tmp[1:], dtype=float)
 
         for idx in tmp_vector:
-            self.t.add_item(idx, tmp_vector[idx].to_list())
+            self.t.add_item(idx, tmp_vector[idx].tolist())
         print("Read file finished ...")
         file_name = self.config['index_file_file'] + '.' + self.type 
 
@@ -69,7 +75,7 @@ class W2V_ANN(Model):
         b_time = time.time()
         candidate_set = set()
         if self.type == 'item':
-            last_n_items = [self.item_idx[e.split(':', 1)[1]] for e in last_n_events[::-1] if e in self.item_idx]
+            last_n_items = [self.item_idx[e.split(':', 1)[1]] for e in last_n_events[::-1] if e.split(':', 1)[1] in self.item_idx]
         else:
             last_n_items = [self.item_idx[e] for e in last_n_events[::-1] if e in self.item_idx]
         
