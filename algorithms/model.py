@@ -28,8 +28,10 @@ class Model(ABC):
     def test(self):
         # "test_file" key is requirement
         with open(self.test_file, 'r') as in_f:
-            for line in tqdm(in_f):
+            for idx, line in tqdm(enumerate(in_f)):
                 self._line_process(line)
+                # if idx > 100:
+                #   break                
 
         #     res = Parallel(n_jobs=10)(delayed(self._line_process)(line) for line in tqdm(in_f))
         # for x, y in res:
@@ -62,16 +64,16 @@ class Model(ABC):
         pred = self.predict(history_events, self.topN)
         # predict the next purchase item
         if purchase_items:
-            gt = set([purchase_items[0][1]])
+            gt = set([x for i, x in purchase_items])
             metrics_map = ['HR', 'MRR', 'NDCG']
-            out = metrics(set(gt), pred, metrics_map)
+            out = metrics(gt, pred, metrics_map)
             # print('[p] :', gt, pred, out)
             self.pred_next_purchase_metric.append(out)
 
         # predict the whole day items
-        gt = [e.split(':', 1)[1] for e in predict_events[idx:]]
+        gt = set([e.split(':', 1)[1] for e in predict_events])
         metrics_map = ['P&R', 'MAP']
-        out = metrics(set(gt), pred, metrics_map)
+        out = metrics(gt, pred, metrics_map)
         # print('[whole] :', gt, pred, out)
         self.pred_whole_day_metric.append(out[0] + [out[1]])
 
