@@ -29,7 +29,7 @@ class W2V_ANN(Model):
         b_time = time.time()
         self.item_idx = {}
         self.item_idx_reverse = {}
-        tmp_vector = {}
+
         with open(self.config['item_vec_file'], 'r') as in_f:
             num_items, dim = in_f.readline().strip().split()
             print(f'Num of items : {num_items}, dim : {dim}')
@@ -37,29 +37,9 @@ class W2V_ANN(Model):
             
             for idx, line in tqdm(enumerate(in_f)):
                 tmp = line.split()
-                if self.type == 'item':
-                    try:
-                        action, item_org = tmp[0].split(':', 1)
-                    except:
-                        continue
-                else:
-                    action = None
-                    item_org = tmp[0]
-
-                if item_org not in self.item_idx:
-                    self.item_idx[item_org] = idx
-                    self.item_idx_reverse[idx] = item_org
-                    tmp_vector[idx] = np.zeros(int(dim))
-                else:
-                    idx = self.item_idx[item_org]
-
-                if self.type == 'item':
-                    tmp_vector[idx] += np.array(tmp[1:], dtype=float) * self.action_w[action]
-                else:
-                    tmp_vector[idx] += np.array(tmp[1:], dtype=float)
-
-        for idx in tmp_vector:
-            self.t.add_item(idx, tmp_vector[idx].tolist())
+                self.item_idx[tmp[0]] = idx
+                self.item_idx_reverse[idx] = tmp[0]
+                self.t.add_item(idx, list(map(float, tmp[1:])))
         print("Read file finished ...")
         file_name = self.config['index_file_file'] + '.' + self.type 
 
@@ -75,7 +55,7 @@ class W2V_ANN(Model):
         b_time = time.time()
         candidate_set = set()
         if self.type == 'item':
-            last_n_items = [self.item_idx[e.split(':', 1)[1]] for e in last_n_events[::-1] if e.split(':', 1)[1] in self.item_idx]
+            last_n_items = [self.item_idx[e.split(':', 1)[1]] for e in last_n_events[::-1] if e in self.item_idx]
         else:
             last_n_items = [self.item_idx[e] for e in last_n_events[::-1] if e in self.item_idx]
         

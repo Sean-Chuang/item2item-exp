@@ -143,7 +143,7 @@ with user_weight as (
         ad_id, 
         1.0 / sqrt(count(*)) as user_weight
     from z_seanchuang.i2i_offline_train_raw
-    where dt='2020-05-30'
+    where dt='2020-05-30-2week'
     group by 1
 ),
 user_item as (
@@ -151,7 +151,7 @@ user_item as (
         ad_id, 
         content_id
     from z_seanchuang.i2i_offline_train_raw 
-    where dt='2020-05-30'
+    where dt='2020-05-30-2week'
 ),
 cooccurrence_table as (
     select 
@@ -195,7 +195,7 @@ item_item_similarity as (
 select 
     item_a as item,
     slice(array_agg(concat(item_b, '=', cast(score AS VARCHAR)) order by score desc), 1, 20) as similar_item,
-    '2020-05-30-user-w' as dt
+    '2020-05-30-user-w-2week' as dt
 from item_item_similarity
 group by 1
 ;
