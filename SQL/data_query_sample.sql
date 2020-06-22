@@ -1,6 +1,7 @@
 SELECT 
 	cast(Json_extract(row, '$._d.content_ids') AS ARRAY<varchar>) AS content_ids, 
-	cast(j(row, '$.timestamp') AS bigint) AS ts, j(row,'$._d.exid[0]') as exid, 
+	cast(j(row, '$.timestamp') AS bigint) AS ts, 
+	j(row,'$._d.exid[0]') as exid, 
 	j(row, '$._u') as guid, try_cast(j(row,'$._d.uplift_rate[0]') as double) as uplift_rate , 
 	row 
 FROM hive_ad.DEFAULT.ad_tracker_plain atp 

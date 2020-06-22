@@ -75,8 +75,9 @@ item_item_similarity as (
     select 
         item_a,
         item_b,
+        cat.title as item_b_title,
+        cat.google_product_category as item_b_category,
         c.weight,
-
         s1.cnt as a_cnt,
         s2.cnt as b_cnt,
         c.weight / (s1.cnt * pow(s2.cnt, 0.5)) as score
@@ -87,6 +88,7 @@ item_item_similarity as (
     inner join catlog_items cat on c.item_b = cat.content_id 
     where item_a != item_b
 )
+select * from item_item_similarity limit 100;
 
 select 
     item_a as item,
