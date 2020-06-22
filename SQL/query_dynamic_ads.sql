@@ -40,6 +40,6 @@ JOIN rds_ad.smartad.campaign_creative cc
 	ON cc.creative_id=v.creative_id 
 WHERE v.dt >= '2020-05-24'
 	AND ext.dt >= '2020-05-24'
-	-- AND cc.merchandise_catalog_id in (70006,70007,70015,70016) 
+	AND cc.merchandise_catalog_id in (70006,70007,70015,70016) 
 GROUP BY 1 
 ORDER BY 1;

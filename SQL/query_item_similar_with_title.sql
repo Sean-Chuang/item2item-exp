@@ -12,6 +12,9 @@ with catlog_items as (
 ),
 
 
+
+delete from z_seanchuang.tmp_i2i_offline_item_topk_items_info where tag='2020-05-30-user-w-res';
+insert into z_seanchuang.tmp_i2i_offline_item_topk_items_info
 with catlog_items as (
     select 
         regexp_replace(id,'^([0-9]+):([0-9a-zA-Z\-_]+):([0-9]+)$','$2:$3') as content_id, 
@@ -85,17 +88,90 @@ item_item_similarity as (
     left join item_self_count s1 on c.item_a = s1.item
     left join item_self_count s2 on c.item_b = s2.item
     inner join high_freq_items h on c.item_a = h.content_id 
-    inner join catlog_items cat on c.item_b = cat.content_id 
-    where item_a != item_b
+    inner join catlog_items cat on c.item_b = cat.content_id
 )
+select 
+    item_a as item,
+    slice(array_agg((item_b, score, item_b_title, item_b_category) order by score desc), 1, 20) as similar_item,
+    '2020-05-30-user-w-res' as tag
+from item_item_similarity
+group by 1
+;
+
+
+select count(distinct item1) as c_item1 , count(distinct item2) as c_item2 from cooccurrence_table;
 select * from item_item_similarity limit 100;
+
+
+
+
+insert into z_seanchuang.tmp_i2i_offline_item_topk_items_info
+with catlog_items as (
+    select 
+        regexp_replace(id,'^([0-9]+):([0-9a-zA-Z\-_]+):([0-9]+)$','$2:$3') as content_id, 
+        title, 
+        google_product_category, 
+        try_cast(regexp_replace(price, 'JPY', '') as double) as price 
+    from hive.maeda.rakuten_rpp_datafeed 
+), 
+high_freq_items as ( 
+    select 
+        content_id, 
+        count(*) AS click 
+    from hive_ad.default.action_click ac 
+    inner join catlog_items c 
+        on ac.mc_item_id=c.content_id 
+    where ac.dt between '2020-05-24' and '2020-05-30' 
+    group by 1 order by 2 desc 
+    limit 4000 
+),
+with item_emb as (
+    select 
+        element_at(split(item, ':',2),1) as event,  
+        element_at(split(item, ':',2),2) as content_id, 
+        vec 
+    from z_seanchuang.i2i_w2v_features
+    where dt='2020-05-30' 
+        and feature_id='w20_n2_ft'   
+),
+item_emb1 as (
+    select 
+        content_id,
+        MAX_BY(vec, 
+            case 
+                when event='purchase' then 2 
+                when event='add_to_cart' then 1 
+                else 0 
+            end) as vec
+    from item_emb
+    group by 1
+),
+item_emb2 as (
+    select 
+        content_id, 
+        vec
+    from item_emb
+    where event='view_content'
+),
+item_item_similarity as (
+    select 
+        a1.content_id as item_a,
+        a2.content_id as item_b,
+        reduce(zip_with(a1.vec, a2.vec, (x,y)->x*y), 0, (s,x)->s+x, s->s) 
+                        / pow(reduce(a1.vec, 0,(s,x)->s+x*x,s->s),0.5) 
+                        / pow(reduce(a2.vec, 0,(s,x)->s+x*x,s->s), 0.5) as score
+    from item_emb2 a1
+    cross join item_emb2 a2
+    inner join high_freq_items h on a1.item_a = h.content_id 
+    inner join catlog_items cat on a2.item_b = cat.content_id
+)
+select count(distinct item_a) as c_item1 , count(distinct item_b) as c_item2 from item_item_similarity;
 
 select 
     item_a as item,
     slice(array_agg(concat(item_b, '=', cast(score AS VARCHAR)) order by score desc), 1, 20) as similar_item,
-    '2020-05-30-user-w-2week' as dt
+    '2020-05-30-w20_n2_ft' as dt
 from item_item_similarity
 group by 1
-; 
-select count(distinct item1) as c_item1 , count(distinct item2) as c_item2 from cooccurrence_table;
+;
 
