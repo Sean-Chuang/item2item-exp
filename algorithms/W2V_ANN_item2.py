@@ -103,17 +103,10 @@ class W2V_ANN(Model):
 
         res = []
         for item, score in final_items:
-            try:
-                if self.type == 'item':
-                    item_raw = self.item_idx_reverse[item]
-                else:
-                    item_raw = self.item_idx_reverse[item].split(':', 1)[1]
+            if item in res:
+                continue
+            res.append(item)
 
-                if item_raw in res:
-                    continue
-                res.append(item_raw)
-            except:
-                pass
             if len(res) == topN:
                 break
         return res
@@ -123,11 +116,16 @@ class W2V_ANN(Model):
         item_idx_arr, score_arr = self.t.get_nns_by_item(given_idx, topK, include_distances=True)
         res = {}
         for idx, score in zip(item_idx_arr, score_arr):
-            if self.type == 'item':
-                item_raw = self.item_idx_reverse[idx]
-            else:
-                item_raw = self.item_idx_reverse[idx].split(':', 1)[1]
-            res[item_raw] = score
+            try:
+                if self.type == 'item':
+                    item_raw = self.item_idx_reverse[idx]
+                else:
+                    item_raw = self.item_idx_reverse[idx].split(':', 1)[1]
+                if item_raw not in res:
+                    res[item_raw] = 1 - score
+            except:
+                pass
+            
         return res
 
 
