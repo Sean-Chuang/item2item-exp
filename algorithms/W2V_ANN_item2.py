@@ -78,7 +78,8 @@ class W2V_ANN(Model):
 
     def predict(self, last_n_events, topN):
         b_time = time.time()
-        item_candidate = list()
+        item_similar = list()
+        candidate_items = set()
         if self.type == 'item':
             last_n_items = [self.item_idx[e.split(':', 1)[1]] for e in last_n_events[::-1] if e.split(':', 1)[1] in self.item_idx]
         else:
@@ -88,28 +89,21 @@ class W2V_ANN(Model):
             return []
 
         for item_idx in last_n_items:
-            item_candidate.append(self.__item_topK_similar(item_idx, topN))
+            similar_res = self.__item_topK_similar(item_idx, topN)
+            item_similar.append(similar_res)
+            candidate_items.update(set(similar_res.keys()))
 
+        candidate_list = list(candidate_items)
+        score_matric = np.zeros((len(last_n_items), len(candidate_list)))
+        for i, item_id in enumerate(last_n_items):
+            score_matric[i] = self.__item_item_arr_norm_score(item_id, candidate_list, item_similar[i])
 
         rank_weight = np.array([1 / np.log2(rank + 2) for rank in range(len(last_n_items))])
-        final_score = []
-        for i, _res in enumerate(item_candidate):
-            for item in _res:
-                final_score.append((item, _res[item] * rank_weight[i]))
+        final_score = rank_weight.dot(score_matric).tolist()
 
         # print(last_n_items, list(zip(candidate_list, final_score)))
-        final_items = sorted(final_score, key=lambda x:x[1], reverse=True)
-        # print(f"[Time|Preict] {time.time()-b_time}")
-
-        res = []
-        for item, score in final_items:
-            if item in res:
-                continue
-            res.append(item)
-
-            if len(res) == topN:
-                break
-        return res
+        final_items = sorted(zip(candidate_list, final_score), key=lambda x:x[1], reverse=True)
+        return [item for item, score in final_items[:topN]]
 
 
     def __item_topK_similar(self, given_idx, topK):
@@ -128,6 +122,13 @@ class W2V_ANN(Model):
             
         return res
 
+    def __item_item_arr_norm_score(self, item, candidate_item_arr, similar_items):
+        res = np.zeros(len(candidate_item_arr))
+        for _item in similar_items:
+            _score = similar_items[_item]
+            if _item in candidate_item_arr:
+                res[candidate_item_arr.index(_item)] = float(_score)
+        return res / np.linalg.norm(res)
 
 
 
