@@ -33,8 +33,9 @@ glove_model="/mnt1/train/model/glove.i2i.${dt}.model"
 
 # Train fasttext
 cd /mnt1/train/
+./fastText-0.9.1/fasttext skipgram -thread 25 -lr 0.2 -ws 20 -minn 0 -maxn 0 -dim 50 -wordNgrams 1 -epoch 8 -minCount 3 -neg 5 -loss ns -input ${sentences} -output ${ft_model}  
 # ./fastText-0.9.1/fasttext skipgram -thread 25 -ws 5 -minn 0 -maxn 0 -dim 50 -minCount 1 -wordNgrams 1 -epoch 25 -input ${sentences} -output ${ft_model}
-./fastText-0.9.1/fasttext skipgram -thread 25 -ws 20 -minn 0 -maxn 0 -dim 50 -minCount 1 -wordNgrams 1 -epoch 25 -input ${sentences} -output ${ft_model}
+# ./fastText-0.9.1/fasttext skipgram -thread 25 -ws 20 -minn 0 -maxn 0 -dim 50 -minCount 1 -wordNgrams 1 -epoch 25 -input ${sentences} -output ${ft_model}
 du -khs ${ft_model}.vec
 
 # Train glove
@@ -58,7 +59,7 @@ du -khs ${ft_model}.vec
 ####################### 
 cd /mnt1/train/glove
 export sentences glove_model
-./demo.sh
+./i2i.sh
 du -khs ${glove_model}.txt
 
 # 1. process test data for training LR

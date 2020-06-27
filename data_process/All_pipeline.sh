@@ -12,3 +12,9 @@ dt="2020-05-30"
 ./data_process/0_raw_data_handler.py ${dt} data/${dt}
 
 # Run model
+
+
+
+
+# Install spotlight
+pip install git+https://github.com/maciejkula/spotlight.git@master#egg=spotlight
