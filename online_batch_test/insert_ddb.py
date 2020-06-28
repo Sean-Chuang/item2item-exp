@@ -111,8 +111,7 @@ def fetch_topK_similar(ann_model, topK, item_idx_map, valid_items):
         for item_idx, dist in zip(topK_item, topK_dist):
             try:
                 item = item_idx_map[item_idx].split(':', 1)[1].strip()
-                # if item in valid_items and item not in res_dict:
-                if item not in res_dict:
+                if item in valid_items and item not in res_dict:
                     res_dict[item] = Decimal(f"{1-dist:.4f}")
                     # Todo: maybe do score normalize here
             except Exception as err:
