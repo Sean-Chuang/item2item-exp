@@ -19,8 +19,7 @@ encoder.FLOAT_REPR = lambda o: format(o, '.4f')
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 
-# cursor = presto.connect('presto.smartnews.internal',8081).cursor()
-cursor = presto.connect('127.0.0.1',8081).cursor()
+cursor = presto.connect('presto.smartnews.internal',8081).cursor()
 dynamodb = boto3.resource('dynamodb', region_name='ap-northeast-1')
 
 
@@ -61,7 +60,7 @@ def fetch_category_items(company_table):
             regexp_replace(id,'^([0-9]+):([0-9a-zA-Z\-_]+):([0-9]+)$','$2:$3') as content_id
         from {company_table} 
     """
-    data = __query_presto(query, 1000)
+    data = __query_presto(query)
     valid_items = set(data['content_id'].unique())
     log.info(f"Total valid_items counts : {len(valid_items)}")
     log.info(f"[Time|fetch_category_items] Cost : {time.time() - b_time}")
