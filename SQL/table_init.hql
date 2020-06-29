@@ -60,6 +60,7 @@ location 's3://smartad-dmp/warehouse/user/seanchuang/i2i_offline_item_topk_items
 
 
 create table if not exists z_seanchuang.i2i_w2v_features (
+    idx bigint,
     item string,
     vec array<double>
 )
