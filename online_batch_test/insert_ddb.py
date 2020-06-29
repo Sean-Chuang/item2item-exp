@@ -20,8 +20,8 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 log = logging.getLogger(__name__)
 
 cursor = presto.connect('presto.smartnews.internal',8081).cursor()
+ddb_client = boto3.client('dynamodb')
 dynamodb = boto3.resource('dynamodb', region_name='ap-northeast-1')
-
 
 # enum
 @unique
@@ -51,6 +51,22 @@ def __query_presto(query, limit=None):
     return df
 
 
+def __update_table_WCU(table, read_capacity, write_capacity):
+    try:
+        res = ddb_client.update_table(
+            TableName=table, 
+            ProvisionedThroughput={
+                'ReadCapacityUnits': read_capacity,
+                'WriteCapacityUnits': write_capacity
+            }
+        )
+        log.info(f"Finish update the table WCU. [{read_capacity}, {write_capacity}]")
+    except Exception as err:
+        log.error(err)
+        log.warning(f"WCU do not change...")
+
+
+
 def fetch_category_items(company_table):
     valid_items = set()
     b_time = time.time()
@@ -67,12 +83,12 @@ def fetch_category_items(company_table):
     return valid_items
 
 
-def build_ann(items_vec_file, save_index=False):
+def build_ann(items_vec_file, valid_items, save_index=False):
     """
         Only save valid items in ann
     """
     b_time = time.time()
-    item_idx_map = {}
+    item_idx_map, item_idx_vector = {}, {}
     log.info("[build_ann] Start to read vectors")
     with open(items_vec_file, 'r') as in_f:
         num_items, dim = in_f.readline().strip().split()
@@ -83,8 +99,16 @@ def build_ann(items_vec_file, save_index=False):
             tmp = line.split()
             item_id = tmp[0]
             emb = list(map(float, tmp[1:]))
+
             item_idx_map[idx] = item_id
-            ann_model.add_item(idx, emb)
+            item_idx_vector[idx] = emb
+            try:
+                content_id = item_id.split(':', 1)[1].strip()
+                if content_id in valid_items:
+                    ann_model.add_item(idx, emb)
+            except Exception as err:
+                log.error(err)
+                log.warning(f"{item_id} not a valided behaviors...")
 
     log.info("[build_ann] Start to build ann index")
     index_file = items_vec_file 
@@ -93,25 +117,27 @@ def build_ann(items_vec_file, save_index=False):
         ann_model.save(f"{index_file}.ann")
 
     log.info(f"[Time|build_ann] Cost : {time.time() - b_time}")
-    return item_idx_map, ann_model
+    return item_idx_map, item_idx_vector, ann_model
 
 
-def fetch_topK_similar(ann_model, topK, item_idx_map, valid_items):
+def fetch_topK_similar(ann_model, topK, item_idx_map, item_idx_vector):
     """
     result : {
         "[behavior]" : {item_a: socre, item_b: score, }
 
     """
     b_time = time.time()
+    log.info("[fetch_topK_similar] Start to get topK items")
     topK_similar_result = {}
-    for idx in item_idx_map:
+    for idx in item_idx_vector:
         item_label = item_idx_map[idx]
+        item_emb = item_idx_vector[idx]
         res_dict = OrderedDict()
-        topK_item, topK_dist = ann_model.get_nns_by_item(idx, topK*3, include_distances=True)
+        topK_item, topK_dist = ann_model.get_nns_by_vector(item_emb, topK*3, include_distances=True)
         for item_idx, dist in zip(topK_item, topK_dist):
             try:
                 item = item_idx_map[item_idx].split(':', 1)[1].strip()
-                if item in valid_items and item not in res_dict:
+                if item not in res_dict:
                     res_dict[item] = Decimal(f"{1-dist:.4f}")
                     # Todo: maybe do score normalize here
             except Exception as err:
@@ -127,6 +153,8 @@ def fetch_topK_similar(ann_model, topK, item_idx_map, valid_items):
 
 def insert_ddb(table_name, company_label, topK_similar):
     b_time = time.time()
+    __update_table_WCU(table_name, 20, 200)
+    log.info("[insert_ddb] Start to insert data in DDB")
     table = dynamodb.Table(table_name)
     # Step1: update the table data
     old_data = table.scan(FilterExpression=Key("label").eq(company_label),
@@ -179,13 +207,14 @@ def insert_ddb(table_name, company_label, topK_similar):
         with table.batch_writer() as batch:
             for item in old_item:
                 batch.delete_item(Key={'item_id':item, 'label':company_label})
-
+    __update_table_WCU(table_name, 5, 2)
     log.info(f"[Time|insert_ddb] Cost : {time.time() - b_time}")
     
 
 def backup(file_name, topK_similar):
     b_time = time.time()
     # Save in file and upload s3.
+    log.info("[backup] Start to backup data")
     with open(file_name, 'w') as out_f:
         for item in topK_similar:
             print(f"{item}\t{json.dumps(topK_similar[item], cls=DecimalEncoder)}", file=out_f)
@@ -196,8 +225,8 @@ def backup(file_name, topK_similar):
 def main(company_table, items_vec_file, topK, ddb_table, company_label, backup_file):
     b_time = time.time()
     valid_items_set = fetch_category_items(company_table)
-    item_idx_map, ann_model = build_ann(items_vec_file, True)
-    topK_similar_result = fetch_topK_similar(ann_model, topK, item_idx_map, valid_items_set)
+    item_idx_map, item_idx_vector, ann_model = build_ann(items_vec_file, valid_items_set, True)
+    topK_similar_result = fetch_topK_similar(ann_model, topK, item_idx_map, item_idx_vector)
     insert_ddb(ddb_table, company_label, topK_similar_result)
     backup(backup_file, topK_similar_result)
     log.info(f"[Time|main] Cost : {time.time() - b_time}")
