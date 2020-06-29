@@ -21,7 +21,7 @@ from joblib import Parallel, delayed
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 
-cursor = presto.connect('presto.smartnews.internal',8081).cursor()
+cursor = presto.connect('127.0.0.1',8081).cursor()
 ddb_client = boto3.client('dynamodb')
 dynamodb = boto3.resource('dynamodb', region_name='ap-northeast-1')
 
@@ -77,14 +77,14 @@ def fetch_category_items(company_table):
             regexp_replace(id,'^([0-9]+):([0-9a-zA-Z\-_]+):([0-9]+)$','$2:$3') as content_id
         from {company_table} 
     """
-    data = __query_presto(query)
+    data = __query_presto(query, 1000)
     valid_items = set(data['content_id'].unique())
     log.info(f"Total valid_items counts : {len(valid_items)}")
     log.info(f"[Time|fetch_category_items] Cost : {time.time() - b_time}")
     return valid_items
 
 
-def build_ann(items_vec_file, valid_items, save_index=False):
+def build_ann(items_vec_file, valid_items):
     """
         Only save valid items in ann
     """
@@ -114,112 +114,84 @@ def build_ann(items_vec_file, valid_items, save_index=False):
                 log.warning(f"{item_id} not a valided behaviors...")
 
     log.info(f"[build_ann] Start to build ann index, total : {valid_items_cnt}")
-    index_file = items_vec_file 
+    index_file = f"{items_vec_file}.ann"
     ann_model.build(30)
-    if save_index:
-        ann_model.save(f"{index_file}.ann")
-
+    ann_model.save(index_file)
+    context_emb_data = [(k, v) for k, v in context_emb_data.items()] 
     log.info(f"[Time|build_ann] Cost : {time.time() - b_time}")
-    return item_idx_map, context_emb_data, ann_model
+    return item_idx_map, context_emb_data, index_file, int(dim)
 
 
-def multi_task(ann_model, item_idx_map, context_emb_data, topK, jobs=5):
+def multi_task(ann_model_file, dim, item_idx_map, context_emb_data, topK, ddb_table, company_label, jobs=5):
     b_time = time.time()
     log.info("[multi_task] Start to multi_task")
-    __update_table_WCU(table_name, 20, 500)
+    __update_table_WCU(ddb_table, 20, 500)
 
     batch_size = 25
     Parallel(n_jobs=jobs, backend="multiprocessing")(
-        delayed(fetch_topK_similar)(ann_model, topK, item_idx_map, data[i:i+batch_size]) for i in range(0, len(context_emb_data), batch_size)
+        delayed(fetch_topK_similar)(ann_model_file, dim, topK, item_idx_map, context_emb_data[i:i+batch_size], ddb_table, company_label) for i in range(0, len(context_emb_data), batch_size)
     )
-    __update_table_WCU(table_name, 5, 2)
+    __update_table_WCU(ddb_table, 5, 2)
     log.info(f"[Time|multi_task] Cost : {time.time() - b_time}")
 
 
-def fetch_topK_similar(ann_model, topK, item_idx_map, items_vec_batch):
+def fetch_topK_similar(ann_model_file, dim, topK, item_idx_map, items_vec_batch, ddb_table, company_label):
     b_time = time.time()
     log.info("[fetch_topK_similar] Start to get topK items")
-    topK_similar_result = {}
-    for line in items_vec_batch:
-        tmp = line.strip().split()
-        item_label = tmp[0]
-        item_emb = list(map(float, tmp[1:]))
-        res_dict = OrderedDict()
-        topK_item, topK_dist = ann_model.get_nns_by_vector(item_emb, topK*3, include_distances=True)
-        for item_idx, dist in zip(topK_item, topK_dist):
-            try:
-                item = item_idx_map[item_idx].split(':', 1)[1].strip()
-                if item not in res_dict:
-                    res_dict[item] = Decimal(f"{1-dist:.4f}")
-                    # Todo: maybe do score normalize here
-            except Exception as err:
-                log.error(err)
-                log.warning(f"Couldn't find item name : {item_idx_map[item_idx]}")
-            if len(res_dict) == topK:
-                break
-        topK_similar_result[item_label] = res_dict
-
-    log.info(f"[Time|fetch_topK_similar] Cost : {time.time() - b_time}")
-    
-    insert_ddb(ddb_table, company_label, topK_similar_result)
-
-
-def insert_ddb(table_name, company_label, topK_similar):
-    b_time = time.time()
-    log.info("[insert_ddb] Start to insert data in DDB")
-    table = dynamodb.Table(table_name)
-    # Step1: update the table data
-    old_data = table.scan(FilterExpression=Key("label").eq(company_label),
-                            ProjectionExpression="item_id"
-                        )['Items']
-    log.info(f"Old data size : {len(old_data)}")
-    old_item = set()
-    for item in old_data:
-        old_item.add(item['item_id'])
-
-    # prepare batch update data
-    update_count = 0
+    ann_model = AnnoyIndex(dim, 'angular')
+    ann_model.load(ann_model_file)
     update_data = {}
-    for e in topK_similar:
-        try:
-            action, item = e.split(':', 1)
-            if item not in update_data:
-                update_data[item] = {'label': company_label}
-            _item = update_data[item]
+    for item_label, action_vecs in items_vec_batch:
+        update_data[item_label] = {'item_id': item_label, 'label': company_label}
+        for action in action_vecs:    
+            item_emb = list(map(float, action_vecs[action]))
+            res_dict = OrderedDict()
+            topK_item, topK_dist = ann_model.get_nns_by_vector(item_emb, topK*3, include_distances=True)
+            for item_idx, dist in zip(topK_item, topK_dist):
+                try:
+                    item = item_idx_map[item_idx].split(':', 1)[1].strip()
+                    if item not in res_dict:
+                        res_dict[item] = Decimal(f"{1-dist:.4f}")
+                        # Todo: maybe do score normalize here
+                except Exception as err:
+                    log.error(err)
+                    log.warning(f"Couldn't find item name : {item_idx_map[item_idx]}")
+                if len(res_dict) == topK:
+                    break
+
             if action == Action.View.value:
-                _item['view_similar'] = topK_similar[e]
+                update_data[item_label]['view_similar'] = res_dict
             elif action == Action.AddToCart.value:
-                _item['add_cart_similar'] = topK_similar[e]
+                update_data[item_label]['add_cart_similar'] = res_dict
             elif action == Action.Purchase.value:
-                _item['purchase_similar'] = topK_similar[e]
+                update_data[item_label]['purchase_similar'] = res_dict
             else:
                 log.warning(f"{e} -> {action} not a valided action...")
                 continue
-            update_data[item] = _item
-        except Exception as err:
-            log.error(err)
-            log.warning(f"{e} not a valided behaviors...")
 
+    log.info(f"[Time|fetch_topK_similar] Cost : {time.time() - b_time}")
+    
+    insert_ddb(ddb_table, company_label, update_data)
+
+
+def insert_ddb(table_name, company_label, update_data):
+    b_time = time.time()
+    log.info("[insert_ddb] Start to insert data in DDB")
+    table = dynamodb.Table(table_name)
+
+    # prepare batch update data
+    update_count = 0
     with table.batch_writer() as batch:
         for item in update_data:
             try:
                 _item = update_data[item]
-                _item['item_id'] = item
                 batch.put_item(Item=_item)
-                old_item.discard(item)
                 update_count += 1
             except Exception as err:
                 log.error(err)
                 log.warning(f"{item} update failed...")
 
-    # Step2: remove the old items
     log.info(f"Update items : {update_count}")
-    log.info(f"Remove item size : {len(old_item)}")
-    if update_count > 0:
-        with table.batch_writer() as batch:
-            for item in old_item:
-                batch.delete_item(Key={'item_id':item, 'label':company_label})
-
     log.info(f"[Time|insert_ddb] Cost : {time.time() - b_time}")
     
 
@@ -237,8 +209,8 @@ def backup(file_name, topK_similar):
 def main(company_table, items_vec_file, topK, ddb_table, company_label, backup_file):
     b_time = time.time()
     valid_items_set = fetch_category_items(company_table)
-    item_idx_map, context_emb_data, ann_model = build_ann(items_vec_file, valid_items_set, True)
-    multi_task(ann_model, item_idx_map, context_emb_data, topK)
+    item_idx_map, context_emb_data, ann_model_file, dim = build_ann(items_vec_file, valid_items_set)
+    multi_task(ann_model_file, dim, item_idx_map, context_emb_data, topK, ddb_table, company_label)
     # topK_similar_result = fetch_topK_similar(ann_model, topK, item_idx_map, item_idx_vector)
     # insert_ddb(ddb_table, company_label, topK_similar_result)
     # backup(backup_file, topK_similar_result)
