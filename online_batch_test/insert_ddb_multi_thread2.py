@@ -153,44 +153,45 @@ def fetch_topK_similar(items_vec_file, ann_model, topK, item_idx_map, items_grou
             tmp = line.split()
             item_id = tmp[0]
             action, content_id = item_id.split(':', 1)
-            items_group[content_id].remove(item_id)
-            item_emb = list(map(float, tmp[1:]))
-            if item_label not in update_data:
-                update_data[item_label] = {'item_id': item_label, 'label': company_label}
+            if content_id in items_group:
+                items_group[content_id].remove(item_id)
+                item_emb = list(map(float, tmp[1:]))
+                if content_id not in update_data:
+                    update_data[content_id] = {'item_id': content_id, 'label': company_label}
 
-            res_dict = OrderedDict()
-            topK_item, topK_dist = ann_model.get_nns_by_vector(item_emb, topK*3, include_distances=True)
-            for item_idx, dist in zip(topK_item, topK_dist):
-                try:
-                    item = item_idx_map[item_idx].split(':', 1)[1].strip()
-                    if item not in res_dict:
-                        res_dict[item] = Decimal(f"{1-dist:.4f}")
-                        # Todo: maybe do score normalize here
-                except Exception as err:
-                    log.error(err)
-                    log.warning(f"Couldn't find item name : {item_idx_map[item_idx]}")
-                if len(res_dict) == topK:
-                    break
+                res_dict = OrderedDict()
+                topK_item, topK_dist = ann_model.get_nns_by_vector(item_emb, topK*3, include_distances=True)
+                for item_idx, dist in zip(topK_item, topK_dist):
+                    try:
+                        item = item_idx_map[item_idx].split(':', 1)[1].strip()
+                        if item not in res_dict:
+                            res_dict[item] = Decimal(f"{1-dist:.4f}")
+                            # Todo: maybe do score normalize here
+                    except Exception as err:
+                        log.error(err)
+                        log.warning(f"Couldn't find item name : {item_idx_map[item_idx]}")
+                    if len(res_dict) == topK:
+                        break
 
-            if action == Action.View.value:
-                update_data[item_label]['view_similar'] = res_dict
-            elif action == Action.AddToCart.value:
-                update_data[item_label]['add_cart_similar'] = res_dict
-            elif action == Action.Purchase.value:
-                update_data[item_label]['purchase_similar'] = res_dict
-            else:
-                log.warning(f"{e} -> {action} not a valided action...")
-                continue
+                if action == Action.View.value:
+                    update_data[content_id]['view_similar'] = res_dict
+                elif action == Action.AddToCart.value:
+                    update_data[content_id]['add_cart_similar'] = res_dict
+                elif action == Action.Purchase.value:
+                    update_data[content_id]['purchase_similar'] = res_dict
+                else:
+                    log.warning(f"{e} -> {action} not a valided action...")
+                    continue
 
-            if len(items_group[content_id]) == 0:
-                q.put(update_data[item_label])
+                if len(items_group[content_id]) == 0:
+                    q.put(update_data[content_id])
 
     log.info(f"Check items group result : {sum([len(g) for g in items_group])}")
     log.info(f"[Time|fetch_topK_similar] Cost : {time.time() - b_time}")
     return update_data
 
 
-def insert_ddb(table_name, company_label, update_data):
+def _insert_ddb(table_name, company_label, update_data):
     b_time = time.time()
     log.info("[insert_ddb] Start to insert data in DDB")
     table = dynamodb.Table(table_name)
@@ -239,6 +240,6 @@ if __name__ == '__main__':
     ddb_table_name = "dev_dynamic_ads_similar_items"
     company_label = "rakuten_shopping"
     backup_file = "similar_items_res.csv"
-    threading.Thread(target=worker, args=(ddb_table_name, company_label), daemon=True).start() 
+    threading.Thread(target=insert_ddb, args=(ddb_table_name, company_label), daemon=True).start() 
     main(company_data_table, items_vec_file, topK, ddb_table_name, company_label, backup_file)
 
