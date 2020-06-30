@@ -53,8 +53,7 @@ def insert_ddb(table_name, company_label):
         while True:
             item = q.get()
             try:
-                _item = update_data[item]
-                batch.put_item(Item=_item)
+                batch.put_item(Item=item)
                 update_count += 1
             except Exception as err:
                 log.error(err)
@@ -146,6 +145,7 @@ def build_ann(items_vec_file, valid_items):
 def fetch_topK_similar(items_vec_file, ann_model, topK, item_idx_map, items_group):
     b_time = time.time()
     log.info("[fetch_topK_similar] Start to get topK items")
+    log.info(f"[Begin] Check items group result : {sum([len(g) for g in items_group])}")
     update_data = {}
     with open(items_vec_file, 'r') as in_f:
         num_items, dim = in_f.readline().strip().split()
@@ -186,7 +186,7 @@ def fetch_topK_similar(items_vec_file, ann_model, topK, item_idx_map, items_grou
                 if len(items_group[content_id]) == 0:
                     q.put(update_data[content_id])
 
-    log.info(f"Check items group result : {sum([len(g) for g in items_group])}")
+    log.info(f"[End] Check items group result : {sum([len(g) for g in items_group])}")
     log.info(f"[Time|fetch_topK_similar] Cost : {time.time() - b_time}")
     return update_data
 
@@ -223,13 +223,21 @@ def backup(file_name, topK_similar):
     log.info(f"[Time|backup] Cost : {time.time() - b_time}")
 
 
+def check_queue_finish():
+    while q.qsize() > 0:
+        log.info(f"[Queue] size: {q.qsize()}")
+        time.sleep(30)
+
+
 def main(company_table, items_vec_file, topK, ddb_table, company_label, backup_file):
     b_time = time.time()
     valid_items_set = fetch_category_items(company_table)
     ann_model, item_idx_map, item_group = build_ann(items_vec_file, valid_items_set)
     topK_similar_result = fetch_topK_similar(items_vec_file, ann_model, topK, item_idx_map, item_group)
+
     # insert_ddb(ddb_table, company_label, topK_similar_result)
     # backup(backup_file, topK_similar_result)
+    check_queue_finish()
     log.info(f"[Time|main] Cost : {time.time() - b_time}")
 
 
