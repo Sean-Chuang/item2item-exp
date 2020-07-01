@@ -22,6 +22,14 @@ lines terminated by '\n'
 stored as textfile
 location 's3://smartad-dmp/warehouse/user/seanchuang/i2i_offline_test_raw';
 
+create table if not exists z_seanchuang.i2i_offline_w2v_train_data (
+    events string
+)
+partitioned by (dt string)
+row format delimited fields terminated by '\t'
+lines terminated by '\n'
+stored as textfile
+location 's3://smartad-dmp/warehouse/user/seanchuang/i2i_offline_w2v_train_data';
 
 create table if not exists z_seanchuang.i2i_offline_item_cooccurrence (
     item_a string,

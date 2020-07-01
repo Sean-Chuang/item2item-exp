@@ -218,21 +218,6 @@ item_emb as (
     where dt='2020-05-30' 
         and feature_id='w15_256_cbow'
 ),
-item_emb1 as (
-    select
-        content_id,
-        action,
-        vec 
-    from item_emb
-    where idx >= 0 and idx < 1000000
-),
-item_emb2 as (
-    select
-        content_id,
-        vec 
-    from item_emb
-    inner join catlog_items using(content_id)
-),
 item_item_similarity as (
     select 
         a1.content_id as item_a,
@@ -241,8 +226,19 @@ item_item_similarity as (
         max(reduce(zip_with(a1.vec, a2.vec, (x,y)->x*y), 0, (s,x)->s+x, s->s) 
                         / pow(reduce(a1.vec, 0,(s,x)->s+x*x,s->s),0.5) 
                         / pow(reduce(a2.vec, 0,(s,x)->s+x*x,s->s), 0.5)) as score
-    from item_emb1 a1 
-    cross join item_emb2 a2
+    from (
+            select
+                content_id,
+                action,
+                vec 
+            from item_emb
+            where idx >= 0 and idx < 100000
+        ) a1 
+    cross join (select
+                    content_id,
+                    vec 
+                from item_emb
+                inner join catlog_items using(content_id)) a2
     group by 1, 2, 3
 )
 select 
@@ -251,5 +247,5 @@ select
     slice(array_agg((item_b, score) order by score desc), 1, 20) as similar_item,
     '2020-05-30-w20_n2_ft' as dt
 from item_item_similarity
-group by 1 limit 100
+group by 1,2 limit 100
 ;
