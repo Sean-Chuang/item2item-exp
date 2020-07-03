@@ -89,3 +89,14 @@ row format delimited fields terminated by '\t'
 lines terminated by '\n'
 stored as textfile
 location 's3://smartad-dmp/warehouse/user/seanchuang/tmp_i2i_offline_item_topk_items_info';
+
+
+create table if not exists z_seanchuang.tmp_i2i_items_similar_backup (
+    item string,
+    similar_items_json string 
+)
+partitioned by (dt string)
+row format delimited fields terminated by '\t'
+lines terminated by '\n'
+stored as textfile
+location 's3://smartad-dmp/warehouse/user/seanchuang/tmp_i2i_items_similar_backup';
