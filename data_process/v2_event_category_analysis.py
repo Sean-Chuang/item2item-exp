@@ -19,7 +19,7 @@ def __query_presto(query, limit=None):
     df = pd.DataFrame(cursor.fetchall(), columns=column_names)
     return df
 
-def get_item_google_category(data='item_info.csv'):
+def get_item_google_category(file_name='item_info.csv'):
     b_time = time.time()
     log.info("[fetch_category_items] Start query table...")
     query = f"""
@@ -30,16 +30,28 @@ def get_item_google_category(data='item_info.csv'):
             try_cast(regexp_replace(price, 'JPY', '') as double) as price 
         from hive.maeda.rakuten_rpp_datafeed 
     """
-    data = __query_presto(query)
-    data.set_index('content_id')
-    data.to_csv(f'items_info.csv', sep='\t')
-    log.info(f"Total category items counts : {len(data.index)}")
+    if not path.exists(file_name):
+        data = __query_presto(query)
+        data.set_index('content_id')
+        data.to_csv(file_name, sep='\t')
+        log.info(f"Total category items counts : {len(data.index)}")
+    else:
+        data = pd.read_csv(file_name, sep='\t')
     log.info(f"[Time|fetch_category_items] Cost : {time.time() - b_time}")
-    # print(data[''])
     return data
 
-def get_user_activities_list():
-    pass
+def get_user_activities_list(file_name):
+    user_activities_count = defaultdict(int)
+
+    with open(file_name, 'r') as in_f:
+        for line in tqdm(in_f):
+            ad_id, item_id, behavior, ts = line.strip().split('\t')
+            if item_id:
+                user_activities_count[ad_id] += 1
+    
+    data = pd.DataFrame(user_activities_count)
+    print(data.head(30))
+
 
 def get_user_sessions(data, top_user_list):
     pass
@@ -49,7 +61,8 @@ def category_relation_analyasis():
 
 
 def main():
-    get_item_google_category()
+    items_info = get_item_google_category()
+    user_topK = get_user_activities_list()
 
 
 if __name__ == '__main__':
