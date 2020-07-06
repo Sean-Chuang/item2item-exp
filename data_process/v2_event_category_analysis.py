@@ -6,6 +6,7 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 log = logging.getLogger(__name__)
 
 import pandas as pd
+import numpy as np
 from tqdm import tqdm
 from collections import defaultdict
 from pyhive import presto
@@ -39,6 +40,7 @@ def get_item_google_category(file_name='items_info.csv'):
         data = pd.read_csv(file_name, sep='\t')
     log.info(f"[Time|fetch_category_items] Cost : {time.time() - b_time}")
     data = data.set_index('content_id')
+    # data.loc['xxx']
     return data
 
 def get_user_events(input_file, activies_file_name='user_activies.csv', topK=500000):
@@ -54,7 +56,7 @@ def get_user_events(input_file, activies_file_name='user_activies.csv', topK=500
         data.to_csv(activies_file_name, sep='\t')
     else:
         data = pd.read_csv(activies_file_name, sep='\t')
-    user_topK_list = data.head(topK)['ad_id'].tolist()
+    user_topK_list = set(data.head(topK)['ad_id'].tolist())
 
     user_events = defaultdict(list)
     with open(input_file, 'r') as in_f:
@@ -92,9 +94,19 @@ def get_user_sessions(user_events, session_period=3600):
     return user_sessions
 
 
-def category_relation_analyasis():
-    pass
-
+def category_relation_analyasis(user_session, items_info):
+    viewd_cat_in_next_if_purchased = []
+    viewd_cat_in_next_if_not_purchased = []
+    purchase_cat_in_next_if_purchased = []
+    new_cat_in_next_if_purchased = []
+    new_cat_in_next_if_not_purchased = []
+    for ad_id in tqdm(user_session):
+        user_data = []
+        for sess in user_session[ad_id]:
+            sess_data = {'purchase':set(), 'viewed':set()}
+            for item_id, behavior, ts in sess:
+                if behavior == 'revenue':
+                    events_data['revenue'] = set()
 
 def main():
     items_info = get_item_google_category()
