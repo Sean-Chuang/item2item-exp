@@ -127,7 +127,7 @@ def category_relation_analyasis(user_session, items_cat_info):
                 viewed_cat_in_next_if_purchased.append(len(viewed_cat_in_next)/len(next_total_cat))
                 purchase_cat_in_next_if_purchased.append(len(purchase_cat_in_next)/len(next_total_cat))
                 new_cat_in_next_if_purchased.append(len(new_cat)/len(next_total_cat))
-            elif len(now_session['viewed']) > 0::
+            elif len(now_session['viewed']) > 0:
                 new_cat_in_next_if_not_purchased.append(len(new_cat)/len(next_total_cat))
                 viewed_cat_in_next_if_not_purchased.append(len(viewed_cat_in_next)/len(next_total_cat))
 

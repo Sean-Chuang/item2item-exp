@@ -14,9 +14,11 @@ dt="2020-05-30-2week"
 	./data/${dt}/te_data \
 	smartad-dmp/warehouse/user/seanchuang/i2i_offline_test_raw/dt=${dt}
 
+# Fetch w2v train data
+tag="2020-05-30-viewed"
 ./bin/fetch_table_data.sh \
-	./data/${dt}/w2v_tr_data \
-	smartad-dmp/warehouse/user/seanchuang/i2i_offline_w2v_train_data/dt=${dt}
+	./data/${tag}/w2v_tr_data \
+	smartad-dmp/warehouse/user/seanchuang/i2i_offline_w2v_train_data/dt=${tag}
 
 # Process Data
 ./data_process/0_raw_data_handler.py ${dt} data/${dt}
