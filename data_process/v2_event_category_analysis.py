@@ -117,17 +117,19 @@ def category_relation_analyasis(user_session, items_cat_info):
             now_session = user_data[i]
             next_session = user_data[i+1]
             next_total_cat = next_session['purchase'] | next_session['viewed']
+            if len(next_total_cat) == 0:
+                continue
 
             new_cat = next_total_cat - (now_session['purchase'] | now_session['viewed'])
             viewed_cat_in_next = (now_session['viewed'] - now_session['purchase']) & next_total_cat
             purchase_cat_in_next = now_session['purchase'] & next_total_cat
             if len(now_session['purchase']) > 0:
-                viewed_cat_in_next_if_purchased.append(len(viewed_cat_in_next))
-                purchase_cat_in_next_if_purchased.append(len(purchase_cat_in_next))
-                new_cat_in_next_if_purchased.append(len(new_cat))
-            else:
-                new_cat_in_next_if_not_purchased.append(len(new_cat))
-                viewed_cat_in_next_if_not_purchased.append(len(viewed_cat_in_next))
+                viewed_cat_in_next_if_purchased.append(len(viewed_cat_in_next)/len(next_total_cat))
+                purchase_cat_in_next_if_purchased.append(len(purchase_cat_in_next)/len(next_total_cat))
+                new_cat_in_next_if_purchased.append(len(new_cat)/len(next_total_cat))
+            elif len(now_session['viewed']) > 0::
+                new_cat_in_next_if_not_purchased.append(len(new_cat)/len(next_total_cat))
+                viewed_cat_in_next_if_not_purchased.append(len(viewed_cat_in_next)/len(next_total_cat))
 
     print(f"new_cat_in_next_if_purchased: {np.mean(new_cat_in_next_if_purchased)}\nnew_cat_in_next_if_not_purchased:{np.mean(new_cat_in_next_if_not_purchased)}")
     print(f"viewed_cat_in_next_if_purchased: {np.mean(viewed_cat_in_next_if_purchased)}\nviewed_cat_in_next_if_not_purchased:{np.mean(viewed_cat_in_next_if_not_purchased)}")
