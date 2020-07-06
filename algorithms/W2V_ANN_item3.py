@@ -58,7 +58,7 @@ class W2V_ANN(Model):
         item_similar = list()
         candidate_items = set()
         
-        last_n_items = [self.item_idx[e] for e in last_n_events[::-1] if e in self.item_idx]
+        last_n_items = [self.item_idx[e.split(':', 1)[1]] for e in last_n_events[::-1] if e.split(':', 1)[1] in self.item_idx]
         
         if len(last_n_items) == 0:
             return []
