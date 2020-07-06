@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import numpy as np
-
+import pandas as pd
 import pqkmeans
 import sys
 import pickle
-
+import time
 from tqdm import tqdm
 
 
@@ -12,7 +12,7 @@ def get_items_emb(vec_file):
     with open(vec_file, 'r') as in_f:
         num_items, dim = in_f.readline().strip().split()
         print(f'Num of items : {num_items}, dim : {dim}')
-        vectors = np.empty((num_items, dim), dtype=float)
+        vectors = np.empty((int(num_items), int(dim)), dtype=float)
         items = []
         for idx, line in tqdm(enumerate(in_f)):
             tmp = line.strip().split()
@@ -39,8 +39,10 @@ def cluster(data, k=2500):
 
 
 def main():
+    b_time = time.time()
     items, vecotrs = get_items_emb('/mnt1/train/model/w2v_cbow_64_w10_view.vec')
     clustered = cluster(vecotrs)
+    print('Cost : ', time.time() - b_time)
     pd.DataFrame(list(zip(items, clustered)), columns=['item','label']).to_csv('./items_cluster_id.csv', sep='\t', index=False, header=False)
     
 
