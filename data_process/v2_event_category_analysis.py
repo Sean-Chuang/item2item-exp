@@ -108,9 +108,9 @@ def category_relation_analyasis(user_session, items_cat_info):
                 if item_id in items_cat_info:
                     category = items_cat_info[item_id]
                     if behavior == 'revenue':
-                        events_data['purchase'].add(category)
+                        sess_data['purchase'].add(category)
                     else:
-                        events_data['viewed'].add(category)
+                        sess_data['viewed'].add(category)
             user_data.append(sess_data)
 
         for i in range(len(user_data)-1):
@@ -138,6 +138,7 @@ def main():
     items_cat_info = get_item_google_category()
     user_events = get_user_events("/mnt1/train/item2item-exp/data/2020-05-30/tr_data/merged.data")
     user_sessions = get_user_sessions(user_events, session_period=3600)
+    category_relation_analyasis(user_sessions, items_cat_info)
 
 if __name__ == '__main__':
     main()
