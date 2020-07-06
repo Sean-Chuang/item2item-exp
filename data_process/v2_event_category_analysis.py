@@ -40,8 +40,8 @@ def get_item_google_category(file_name='items_info.csv'):
         data = pd.read_csv(file_name, sep='\t')
     log.info(f"[Time|fetch_category_items] Cost : {time.time() - b_time}")
     data = data.set_index('content_id')
-    # data.loc['xxx']
-    return data
+    res = data['google_product_category'].T.to_dict()
+    return res
 
 def get_user_events(input_file, activies_file_name='user_activies.csv', topK=500000):
     user_activities_count = defaultdict(int)
@@ -94,7 +94,7 @@ def get_user_sessions(user_events, session_period=3600):
     return user_sessions
 
 
-def category_relation_analyasis(user_session, items_info):
+def category_relation_analyasis(user_session, items_cat_info):
     viewd_cat_in_next_if_purchased = []
     viewd_cat_in_next_if_not_purchased = []
     purchase_cat_in_next_if_purchased = []
@@ -105,11 +105,37 @@ def category_relation_analyasis(user_session, items_info):
         for sess in user_session[ad_id]:
             sess_data = {'purchase':set(), 'viewed':set()}
             for item_id, behavior, ts in sess:
-                if behavior == 'revenue':
-                    events_data['revenue'] = set()
+                if item_id in items_cat_info:
+                    category = items_cat_info[item_id]
+                    if behavior == 'revenue':
+                        events_data['purchase'].add(category)
+                    else:
+                        events_data['viewed'].add(category)
+            user_data.append(sess_data)
+
+        for i in range(len(user_data)-1):
+            now_session = user_data[i]
+            next_session = user_data[i+1]
+            next_total_cat = next_session['purchase'] | next_session['viewed']
+
+            new_cat = next_total_cat - (now_session['purchase'] | now_session['viewed'])
+            viewd_cat_in_next = (now_session['viewd'] - now_session['purchase']) & next_total_cat
+            purchase_cat_in_next = now_session['purchase'] & next_total_cat
+            if len(now_session['purchase']) > 0:
+                viewd_cat_in_next_if_purchased.append(len(viewd_cat_in_next))
+                purchase_cat_in_next_if_purchased.append(len(purchase_cat_in_next))
+                new_cat_in_next_if_purchased.append(len(new_cat))
+            else:
+                new_cat_in_next_if_not_purchased.append(len(new_cat))
+                viewd_cat_in_next_if_not_purchased.append(len(viewd_cat_in_next))
+
+    print(f"new_cat_in_next_if_purchased: {np.mean(new_cat_in_next_if_purchased)}\nnew_cat_in_next_if_not_purchased:{np.mean(new_cat_in_next_if_not_purchased)}")
+    print(f"viewd_cat_in_next_if_purchased: {np.mean(viewd_cat_in_next_if_purchased)}\nviewd_cat_in_next_if_not_purchased:{np.mean(viewd_cat_in_next_if_not_purchased)}")
+    print(f"purchase_cat_in_next_if_purchased: {np.mean(purchase_cat_in_next_if_purchased)}")
+
 
 def main():
-    items_info = get_item_google_category()
+    items_cat_info = get_item_google_category()
     user_events = get_user_events("/mnt1/train/item2item-exp/data/2020-05-30/tr_data/merged.data")
     user_sessions = get_user_sessions(user_events, session_period=3600)
 
