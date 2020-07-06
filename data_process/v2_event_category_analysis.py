@@ -43,6 +43,12 @@ def get_item_google_category(file_name='items_info.csv'):
     res = data['google_product_category'].T.to_dict()
     return res
 
+def get_item_cluster_id(file_name='items_cluster_id.csv'):
+    data = pd.read_csv(file_name, sep='\t', names=["content_id", "tag"])
+    data = data.set_index('content_id')
+    res = data['tag'].T.to_dict()
+    return res
+
 def get_user_events(input_file, activies_file_name='user_activies.csv', topK=500000):
     user_activities_count = defaultdict(int)
     if not os.path.exists(activies_file_name):
@@ -137,7 +143,8 @@ def category_relation_analyasis(user_session, items_cat_info):
 
 
 def main():
-    items_cat_info = get_item_google_category()
+    # items_cat_info = get_item_google_category()
+    items_cat_info = get_item_cluster_id()
     user_events = get_user_events("/mnt1/train/item2item-exp/data/2020-05-30/tr_data/merged.data")
     user_sessions = get_user_sessions(user_events, session_period=3600)
     category_relation_analyasis(user_sessions, items_cat_info)
