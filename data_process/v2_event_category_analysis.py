@@ -162,6 +162,8 @@ def category_relation_analyasis_v2(user_session, items_cat_info):
                     distinct_items_cat[item_id] = 'viewed'
 
             for item_id in distinct_items_cat:
+                if items_cat_info not in items_cat_info:
+                    continue
                 behavior = distinct_items_cat[item_id]
                 category = items_cat_info[item_id]
                 if behavior == 'purchase':
