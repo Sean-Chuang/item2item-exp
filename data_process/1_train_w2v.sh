@@ -5,9 +5,9 @@ export PATH="$HOME/miniconda/bin:$PATH"
 mkdir /mnt1/train
 # - install ft
 cd /mnt1/train
-wget https://github.com/facebookresearch/fastText/archive/v0.9.1.zip
-unzip v0.9.1.zip
-cd fastText-0.9.1
+wget https://github.com/facebookresearch/fastText/archive/v0.9.2.zip
+unzip v0.9.2.zip
+cd fastText-0.9.2
 make
 
 # - install glove

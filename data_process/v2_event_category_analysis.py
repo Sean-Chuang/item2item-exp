@@ -213,12 +213,12 @@ def save_category_train_data(user_session, items_cat_info, file_name):
             for i in range(len(user_data)-1):
                 now_session = user_data[i]
                 next_session = user_data[i+1]
-                print(f"{' '.join(now_session)}\tlabel_{' label_'}", file=out_f)
+                print(f"{' '.join(now_session)}\tlabel_{' label_'.join(next_session)}", file=out_f)
 
 
 def __rem_rev(seq):
     seen = set()
-    return [x for x in seq[::-1] if not (x in seen or seen.add(x))][::-1]
+    return [str(x) for x in seq[::-1] if not (x in seen or seen.add(x))][::-1]
 
 
 
