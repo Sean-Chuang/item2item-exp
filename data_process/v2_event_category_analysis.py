@@ -142,12 +142,66 @@ def category_relation_analyasis(user_session, items_cat_info):
     print(f"purchase_cat_in_next_if_purchased: {np.mean(purchase_cat_in_next_if_purchased)}")
 
 
+def category_relation_analyasis_v2(user_session, items_cat_info):
+    viewed_cat_in_next_if_purchased = []
+    viewed_cat_in_next_if_not_purchased = []
+    purchase_cat_in_next_if_purchased = []
+    new_cat_in_next_if_purchased = []
+    new_cat_in_next_if_not_purchased = []
+    for ad_id in tqdm(user_session):
+        user_data = []
+        for sess in user_session[ad_id]:
+            sess_data = {'purchase':list(), 'viewed':list()}
+            distinct_items_cat = {}
+            for item_id, behavior, ts in sess:
+                if behavior == 'revenue':
+                    distinct_items_cat[item_id] = 'purchase'
+                elif item_id in distinct_items_cat:
+                    continue
+                else:
+                    distinct_items_cat[item_id] = 'viewed'
+
+            for item_id in distinct_items_cat:
+                behavior = distinct_items_cat[item_id]
+                category = items_cat_info[item_id]
+                if behavior == 'purchase':
+                    sess_data['purchase'].append(category)
+                else:
+                    sess_data['viewed'].append(category)
+            user_data.append(sess_data)
+
+        for i in range(len(user_data)-1):
+            now_session = user_data[i]
+            next_session = user_data[i+1]
+            next_total_cat = next_session['purchase'] + next_session['viewed']
+            now_total_cat = now_session['purchase'] + now_session['viewed']
+            if len(next_total_cat) == 0:
+                continue
+
+            new_cat = [x for x in next_total_cat if x not in now_total_cat]
+            viewed_cat_in_next = [x for x in next_total_cat if x in now_session['viewed'] and x not in now_session['purchase']]
+            purchase_cat_in_next = [x for x in next_total_cat if x in now_session['purchase']]
+
+            if len(now_session['purchase']) > 0:
+                viewed_cat_in_next_if_purchased.append(len(viewed_cat_in_next)/len(next_total_cat))
+                purchase_cat_in_next_if_purchased.append(len(purchase_cat_in_next)/len(next_total_cat))
+                new_cat_in_next_if_purchased.append(len(new_cat)/len(next_total_cat))
+            elif len(now_session['viewed']) > 0:
+                new_cat_in_next_if_not_purchased.append(len(new_cat)/len(next_total_cat))
+                viewed_cat_in_next_if_not_purchased.append(len(viewed_cat_in_next)/len(next_total_cat))
+
+    print(f"new_cat_in_next_if_purchased: {np.mean(new_cat_in_next_if_purchased)}\nnew_cat_in_next_if_not_purchased:{np.mean(new_cat_in_next_if_not_purchased)}")
+    print(f"viewed_cat_in_next_if_purchased: {np.mean(viewed_cat_in_next_if_purchased)}\nviewed_cat_in_next_if_not_purchased:{np.mean(viewed_cat_in_next_if_not_purchased)}")
+    print(f"purchase_cat_in_next_if_purchased: {np.mean(purchase_cat_in_next_if_purchased)}")
+
+
+
 def main():
     # items_cat_info = get_item_google_category()
     items_cat_info = get_item_cluster_id()
     user_events = get_user_events("/mnt1/train/item2item-exp/data/2020-05-30/tr_data/merged.data")
     user_sessions = get_user_sessions(user_events, session_period=3600)
-    category_relation_analyasis(user_sessions, items_cat_info)
+    category_relation_analyasis_v2(user_sessions, items_cat_info)
 
 if __name__ == '__main__':
     main()
