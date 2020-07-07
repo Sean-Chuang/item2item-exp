@@ -162,7 +162,7 @@ def category_relation_analyasis_v2(user_session, items_cat_info):
                     distinct_items_cat[item_id] = 'viewed'
 
             for item_id in distinct_items_cat:
-                if items_cat_info not in items_cat_info:
+                if item_id not in items_cat_info:
                     continue
                 behavior = distinct_items_cat[item_id]
                 category = items_cat_info[item_id]
@@ -197,6 +197,30 @@ def category_relation_analyasis_v2(user_session, items_cat_info):
     print(f"purchase_cat_in_next_if_purchased: {np.mean(purchase_cat_in_next_if_purchased)}")
 
 
+def save_category_train_data(user_session, items_cat_info, file_name):
+    with open(file_name, 'w') as out_f:
+        for ad_id in tqdm(user_session):
+            user_data = []
+            for sess in user_session[ad_id]:
+                distinct_items_cat = list()
+                for item_id, behavior, ts in sess:
+                    if item_id in items_cat_info:
+                        distinct_items_cat.append(items_cat_info[item_id])
+
+                # Keep order and last element
+                user_data.append(__rem_rev(distinct_items_cat))
+
+            for i in range(len(user_data)-1):
+                now_session = user_data[i]
+                next_session = user_data[i+1]
+                print(f"{' '.join(now_session)}\tlabel_{' label_'}", file=out_f)
+
+
+def __rem_rev(seq):
+    seen = set()
+    return [x for x in seq[::-1] if not (x in seen or seen.add(x))][::-1]
+
+
 
 def main():
     # items_cat_info = get_item_google_category()
@@ -204,6 +228,7 @@ def main():
     user_events = get_user_events("/mnt1/train/item2item-exp/data/2020-05-30/tr_data/merged.data")
     user_sessions = get_user_sessions(user_events, session_period=3600)
     category_relation_analyasis_v2(user_sessions, items_cat_info)
+    save_category_train_data(user_sessions, items_cat_info, 'category_tr.csv')
 
 if __name__ == '__main__':
     main()
