@@ -41,6 +41,16 @@ def get_item_google_category(file_name='items_info.csv'):
     log.info(f"[Time|fetch_category_items] Cost : {time.time() - b_time}")
     data = data.set_index('content_id')
     res = data['google_product_category'].T.to_dict()
+    index_map = {}
+    for idx, cat in enumerate(set(res.values())):
+        index_map[cat] = idx
+    with open('google_cat_idx', 'w') as out_f:
+        for cat in index_map:
+            print(f"{cat}\t{index_map[cat]}", file=out_f)
+    for item_id in res:
+        cat = res[item_id]
+        res[item_id] = index_map[cat]
+
     return res
 
 def get_item_cluster_id(file_name='items_cluster_id.csv'):
