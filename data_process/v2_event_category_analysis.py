@@ -52,7 +52,7 @@ def get_item_google_category(file_name='items_info.csv'):
                 print(f"{cat}\t{index_map[cat]}", file=out_f)
     else:
         _idx_map = pd.read_csv(tag_idx_filename, sep='\t', names=["category", "idx"])
-        _idx_map = idx_map.set_index('category')
+        _idx_map = _idx_map.set_index('category')
         index_map = _idx_map['idx'].T.to_dict()
 
     for item_id in res:
