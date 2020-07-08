@@ -53,7 +53,7 @@ def get_item_google_category(file_name='items_info.csv'):
     else:
         _idx_map = pd.read_csv(tag_idx_filename, sep='\t', names=["category", "idx"])
         _idx_map = idx_map.set_index('category')
-        index_map = _idx_map['category'].T.to_dict()
+        index_map = _idx_map['idx'].T.to_dict()
 
     for item_id in res:
         cat = res[item_id]
@@ -166,6 +166,9 @@ def category_relation_analyasis_v2(user_session, items_cat_info):
     purchase_cat_in_next_if_purchased = []
     new_cat_in_next_if_purchased = []
     new_cat_in_next_if_not_purchased = []
+    view_cat_in_next_puchase = []
+    purchase_cat_in_next_puchase = []
+    session_old_cat, session_new_cat = [], []
     for ad_id in tqdm(user_session):
         user_data = []
         for sess in user_session[ad_id]:
@@ -201,6 +204,17 @@ def category_relation_analyasis_v2(user_session, items_cat_info):
             new_cat = [x for x in next_total_cat if x not in now_total_cat]
             viewed_cat_in_next = [x for x in next_total_cat if x in now_session['viewed'] and x not in now_session['purchase']]
             purchase_cat_in_next = [x for x in next_total_cat if x in now_session['purchase']]
+            session_new_cat.append(len(set(new_cat)))
+            session_old_cat.append(len(set(next_total_cat)) - len(set(new_cat)))
+
+            if len(next_session['purchase']) > 0:
+                if len(now_session['viewed']) > 0:
+                    tmp = [x for x in next_session['purchase'] if x in now_session['viewed']]
+                    view_cat_in_next_puchase.append(len(tmp))
+                if len(now_session['purchase']) > 0:
+                    tmp = [x for x in next_session['purchase'] if x in now_session['purchase']]
+                    purchase_cat_in_next_puchase.append(len(tmp))
+
 
             if len(now_session['purchase']) > 0:
                 viewed_cat_in_next_if_purchased.append(len(viewed_cat_in_next)/len(next_total_cat))
@@ -213,7 +227,8 @@ def category_relation_analyasis_v2(user_session, items_cat_info):
     print(f"new_cat_in_next_if_purchased: {np.mean(new_cat_in_next_if_purchased)}\nnew_cat_in_next_if_not_purchased:{np.mean(new_cat_in_next_if_not_purchased)}")
     print(f"viewed_cat_in_next_if_purchased: {np.mean(viewed_cat_in_next_if_purchased)}\nviewed_cat_in_next_if_not_purchased:{np.mean(viewed_cat_in_next_if_not_purchased)}")
     print(f"purchase_cat_in_next_if_purchased: {np.mean(purchase_cat_in_next_if_purchased)}")
-
+    print(f"view_cat in next purchase cat: {np.mean(view_cat_in_next_puchase)}\npurchase_cat in next purchase cat: {np.mean(purchase_cat_in_next_puchase)}")
+    print(f"new cat avg.: {np.mean(session_new_cat)}, old cat avg.: {np.mean(session_old_cat)}")
 
 def save_category_train_data(user_session, items_cat_info, file_name):
     with open(file_name, 'w') as out_f:
