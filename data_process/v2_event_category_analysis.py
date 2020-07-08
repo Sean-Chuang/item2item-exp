@@ -41,12 +41,20 @@ def get_item_google_category(file_name='items_info.csv'):
     log.info(f"[Time|fetch_category_items] Cost : {time.time() - b_time}")
     data = data.set_index('content_id')
     res = data['google_product_category'].T.to_dict()
-    index_map = {}
-    for idx, cat in enumerate(set(res.values())):
-        index_map[cat] = idx
-    with open('google_cat_idx', 'w') as out_f:
-        for cat in index_map:
-            print(f"{cat}\t{index_map[cat]}", file=out_f)
+    
+    tag_idx_filename = 'google_cat_idx.csv'
+    if not os.path.exists(file_name):
+        index_map = {}
+        for idx, cat in enumerate(set(res.values())):
+            index_map[cat] = idx
+        with open(tag_idx_filename, 'w') as out_f:
+            for cat in index_map:
+                print(f"{cat}\t{index_map[cat]}", file=out_f)
+    else:
+        _idx_map = pd.read_csv(tag_idx_filename, sep='\t', names=["category", "idx"])
+        _idx_map = idx_map.set_index('category')
+        index_map = _idx_map['category'].T.to_dict()
+
     for item_id in res:
         cat = res[item_id]
         res[item_id] = index_map[cat]
