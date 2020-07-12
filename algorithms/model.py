@@ -13,11 +13,12 @@ class Model(ABC):
         self.pred_next_purchase_metric = []
         self.pred_whole_day_metric = []
 
- 
+
     @abstractmethod
     def train(self):
         'Build the vector for knn or others'
         return NotImplemented
+
 
     @abstractmethod
     def predict(self, last_n_events, topN):
@@ -52,7 +53,7 @@ class Model(ABC):
         # pred_whole_day_metric = []
         # Get next purchase item
         # print('[Input]', history_events, predict_events)
-        history_events = list(filter(None, history_events))
+        history_events = list(filter(None, history_events))[-self.lastN:]
         predict_events = list(filter(None, predict_events))
         purchase_items = []
         for idx, event in enumerate(predict_events):
@@ -85,7 +86,7 @@ class Model(ABC):
         # pred_whole_day_metric = []
         # Get next purchase item
         # print('[Input]', history_events, predict_events)
-        history_events = list(filter(None, history_events))
+        history_events = list(filter(None, history_events))[-self.lastN:]
         predict_events = list(filter(None, predict_events))
         purchase_items = []
         for idx, event in enumerate(predict_events):
@@ -127,7 +128,10 @@ class Model(ABC):
     def print_metrics(self, file_name=None):
         a = np.array(self.pred_next_purchase_metric)
         b = np.array(self.pred_whole_day_metric)
-        HR, MRR, NDCG = np.mean(a, axis=0).tolist()
+        if len(self.pred_next_purchase_metric) == 0:
+            HR, MRR, NDCG = 0, 0, 0
+        else:
+            HR, MRR, NDCG = np.mean(a, axis=0).tolist()
         Precison, Recall, F1, MAP = np.mean(b, axis=0).tolist()
         print('HR\tMRR\tNDCG')
         print(f'{HR:.4f}\t{MRR:.4f}\t{NDCG:.4f}')
