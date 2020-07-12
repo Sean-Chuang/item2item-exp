@@ -17,7 +17,9 @@ def get_items_emb(vec_file):
         for idx, line in tqdm(enumerate(in_f)):
             tmp = line.strip().split()
             items.append(tmp[0])
-            vectors[idx,:] = np.array(tmp[1:], dtype=float)
+            vec = np.array(tmp[1:], dtype=float)
+            norm = np.linalg.norm(vec)
+            vectors[idx,:] = vec / norm
 
     return items, vectors
 
