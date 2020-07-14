@@ -10,7 +10,7 @@ import time, sys
 class CP_kNN(Model):
     
     def __init__(self, config):
-        self.requirement = ['test_file', 'lastN', 'topN', 'type']
+        self.requirement = ['test_file', 'lastN', 'topN', 'type', 'dt']
         self.config = config
         miss = set()
         for item in self.requirement:
@@ -87,10 +87,8 @@ if __name__ == '__main__':
         'test_file': '../te_data.csv', 
         'lastN': 10, 
         'topN': 10,
-        'dt' : '2020-05-30-user-w',
-        'train_file': '../tr_data.csv',
-        'item_idx': '../data/item_idx.csv',
-        'behavior_idx': '../data/behavior_idx.csv'
+        'type': 'item',
+        'dt' : '2020-06-30',
     }
     model = CP_kNN(config)
     model.train()

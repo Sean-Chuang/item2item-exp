@@ -99,7 +99,7 @@ def save_test_file_new(user_event_session , file_name, last_N=10):
             
             for idx in range(len(sessions)-1):
                 if len(sessions[idx]) >= last_N and len(sessions[idx+1]) >= 5:
-                    history_events = [f'{s[1]}:{s[0]}' for s in sessions[idx][-last_N:]]
+                    history_events = [f'{s[1]}:{s[0]}' for s in sessions[idx]]
                     predict_events = [f'{s[1]}:{s[0]}' for s in sessions[idx+1]]
                     if set(history_events) != set(predict_events):
                         print(f"{'#'.join(history_events)}\t{'#'.join(predict_events)}", file=out_f)
@@ -168,7 +168,7 @@ if __name__ == '__main__':
     sessions, _ = session_process(events, session_period=args.session_period, last_N=args.last_N)
     print(f"[{get_t()}] test data session_statistic")
     user_events_session_statistic(sessions)
-    save_test_file_new(sessions, 'test.sample.14400.csv', last_N=args.last_N)
+    save_test_file_new(sessions, f'test.sample.{args.session_period}.csv', last_N=args.last_N)
 
     # print(f"[{get_t()}] reading sample data events")
     # sample_events = read_file('data/sample.csv', 'data')
