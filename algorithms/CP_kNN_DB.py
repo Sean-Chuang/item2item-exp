@@ -31,7 +31,21 @@ class CP_kNN(Model):
     def train(self):
         b_time = time.time()
         cursor = presto.connect('presto.smartnews.internal',8081).cursor()
-        query = f"select * from hive_ad.z_seanchuang.i2i_offline_item_topk_items where dt='{self.dt}'"
+        #query = f"select * from hive_ad.z_seanchuang.i2i_offline_item_topk_items where dt='{self.dt}'"
+        query = f"""
+            with test_item as (
+                select 
+                    distinct content_id as item
+                from hive_ad.z_seanchuang.i2i_offline_test_raw
+                where dt = '{self.dt}'
+            )
+            select 
+                all.* 
+            from hive_ad.z_seanchuang.i2i_offline_item_topk_items all
+            inner join test_item test
+                on all.item = test.item
+                  and all.dt='{self.dt}'
+        """
         cursor.execute(query)
         column_names = [desc[0] for desc in cursor.description]
         df = pd.DataFrame(cursor.fetchall(), columns=column_names)

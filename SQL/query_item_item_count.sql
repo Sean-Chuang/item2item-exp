@@ -137,13 +137,15 @@ group by 1
 ### Similarity 1 : 
 #  Given v: 
 #    sim(u, v) = w_freq(u & v) / (freq(v) * freq(u)^0.5)
+delete from z_seanchuang.i2i_offline_item_topk_items where dt='2020-06-30';
+
 insert into z_seanchuang.i2i_offline_item_topk_items
 with user_weight as (
     select 
         ad_id, 
         1.0 / sqrt(count(*)) as user_weight
     from z_seanchuang.i2i_offline_train_raw
-    where dt='2020-05-30-2week'
+    where dt='2020-06-30' 
     group by 1
 ),
 user_item as (
@@ -151,7 +153,7 @@ user_item as (
         ad_id, 
         content_id
     from z_seanchuang.i2i_offline_train_raw 
-    where dt='2020-05-30-2week'
+    where dt='2020-06-30' 
 ),
 cooccurrence_table as (
     select 
@@ -178,6 +180,7 @@ item_self_count as (
         cnt
     from item_cooccurrence
     where item_a = item_b
+        and cnt > 3
 ),
 item_item_similarity as (
     select 
@@ -186,16 +189,16 @@ item_item_similarity as (
         c.weight,
         s1.cnt as a_cnt,
         s2.cnt as b_cnt,
-        c.weight / (s1.cnt * pow(s2.cnt, 0.5)) as score
+        c.weight / (s1.cnt * pow(s2.cnt, 0.1)) as score
     from item_cooccurrence c
-    left join item_self_count s1 on c.item_a = s1.item
-    left join item_self_count s2 on c.item_b = s2.item
-    where item_a != item_b
+    inner join item_self_count s1 on c.item_a = s1.item
+    inner join item_self_count s2 on c.item_b = s2.item
+    -- where item_a != item_b
 )
 select 
     item_a as item,
     slice(array_agg(concat(item_b, '=', cast(score AS VARCHAR)) order by score desc), 1, 20) as similar_item,
-    '2020-05-30-user-w-2week' as dt
+    '2020-06-30' as dt
 from item_item_similarity
 group by 1
 ;
