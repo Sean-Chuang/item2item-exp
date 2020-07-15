@@ -3,6 +3,7 @@ import numpy as np
 from tqdm import tqdm
 from pyhive import presto
 import pandas as pd
+import time
 
 class POP(Model):
     
@@ -29,7 +30,7 @@ class POP(Model):
             select 
                 content_id,
                 count(*) as count
-            from z_seanchuang.i2i_offline_train_raw 
+            from hive_ad.z_seanchuang.i2i_offline_train_raw 
             where dt = '{config['dt']}'
               and content_id != ''
               and behavior_types = '{config['behavior']}'
@@ -37,10 +38,12 @@ class POP(Model):
             order by 2 desc
             limit {config['topN']}
         """
+        print(query)
         cursor.execute(query)
         column_names = [desc[0] for desc in cursor.description]
         df = pd.DataFrame(cursor.fetchall(), columns=column_names)
         self.pop_items = df['content_id'].tolist()
+        print(df)
         print("Train finished ... : ", time.time() - b_time)
  
 
@@ -51,11 +54,11 @@ class POP(Model):
 
 if __name__ == '__main__':
     config = {
-        'test_file': '../te_data.csv', 
+        'test_file': '../data_process/test.sample.3600.0630.csv', 
         'lastN': 10, 
         'topN': 10, 
         'dt': '2020-06-30',
-        'behavior': 'ViewContent'
+        'behavior': 'revenue'
     }
     model = POP(config)
     model.train()
