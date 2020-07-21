@@ -1,9 +1,10 @@
 # Condition Probability Knn
 from model import Model
 import numpy as np
-from scipy.sparse import dok_matrix, csc_matrix
+from scipy.sparse import dok_matrix, csr_matrix
 from tqdm import tqdm
 from implicit.bpr import BayesianPersonalizedRanking
+from itertools import chain
 from annoy import AnnoyIndex
 import time, sys
 
@@ -32,7 +33,7 @@ class MF_kNN(Model):
         b_time = time.time()
         Y = []
         
-        with open(train_file, 'r') as in_f:
+        with open(self.config['train_file'], 'r') as in_f:
             for idx, line in tqdm(enumerate(in_f)):
                 items_list = line.strip().split()
                 Y.append([self.__get_id(item) for item in items_list])
@@ -49,10 +50,11 @@ class MF_kNN(Model):
         self.model = BayesianPersonalizedRanking(num_threads=20)
         print("training model %s", model_name)
         start = time.time()
-        self.model.fit(data_csr)
+        self.model.fit(user_item_table_csr)
         print("trained model '%s' in %s", model_name, time.time() - start)
         print("calculating top movies")
 
+        _, dim = self.model.item_factors.shape
         # Build Ann
         self.t = AnnoyIndex(int(dim), 'angular')
             
@@ -135,11 +137,11 @@ class MF_kNN(Model):
 
 if __name__ == '__main__':
     config = {
-        'test_file': '../te_data.csv', 
+        'test_file': '../data_process/test.sample.3600.0630.csv', 
         'lastN': 10, 
         'topN': 10,
-        'train_file': '../data/sample.csv',
-        'index_file_file': '../tmp/sample'
+        'train_file': '../data/2020-06-30-all/w2v_tr_data/merged.data',
+        'index_file_file': '../tmp/BRP_item'
     }
     model = MF_kNN(config)
     model.train()
