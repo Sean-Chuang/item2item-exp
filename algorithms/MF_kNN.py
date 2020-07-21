@@ -1,7 +1,7 @@
 # Condition Probability Knn
 from model import Model
 import numpy as np
-from scipy.sparse import dok_matrix, csr_matrix
+from scipy.sparse import csc_matrix, csr_matrix
 from tqdm import tqdm
 from implicit.bpr import BayesianPersonalizedRanking
 from itertools import chain
@@ -26,50 +26,7 @@ class MF_kNN(Model):
                 self.config['topN']
             )
 
-        self.item_idx = {}
-
-
-    def train(self):
-        b_time = time.time()
-        Y = []
-        
-        with open(self.config['train_file'], 'r') as in_f:
-            for idx, line in tqdm(enumerate(in_f)):
-                items_list = line.strip().split()
-                Y.append([self.__get_id(item) for item in items_list])
-        # construct the sparse matrix
-        indptr = np.fromiter(chain((0,), map(len, Y)), int, len(Y) + 1).cumsum()
-        indices = np.fromiter(chain.from_iterable(Y), int, indptr[-1])
-        data = np.ones_like(indices)
-        user_item_table_csr = csr_matrix((data, indices, indptr))
-        print('Matrix size : ', user_item_table_csr.shape)
-        print("Train finished ... : ", time.time() - b_time)
-
-        # Train MF
-        model_name = "bpr"
-        self.model = BayesianPersonalizedRanking(num_threads=20)
-        print("training model %s", model_name)
-        start = time.time()
-        self.model.fit(user_item_table_csr)
-        print("trained model '%s' in %s", model_name, time.time() - start)
-        print("calculating top movies")
-
-        _, dim = self.model.item_factors.shape
-        # Build Ann
-        self.t = AnnoyIndex(int(dim), 'angular')
-            
-        for idx, vec in tqdm(enumerate(self.model.item_factors)):
-            self.t.add_item(idx, vec)
-
-        print("Read file finished ...")
-        file_name = self.config['index_file_file']
-
-        self.t.build(30) # 10 trees
-        self.t.save(f'{file_name}.ann')
-
-        # self.t.load(f'{file_name}.ann')
-
-        print(f"Train finished ...{time.time() - b_time}")
+        self.reload = self.config.get('reload', False)
 
 
     def __get_id(self, item):
@@ -78,8 +35,70 @@ class MF_kNN(Model):
         else:
             _id = len(self.item_idx)
             self.item_idx[item] = _id
+            self.item_idx_reverse[_id] = item
 
         return _id
+
+
+    def train(self):
+        b_time = time.time()
+        self.item_idx, self.item_idx_reverse = {}, {}
+
+        if self.reload:
+            with open(self.config['item_vec_file'], 'r') as in_f:
+                num_items, dim = in_f.readline().strip().split()
+                print(f'Num of items : {num_items}, dim : {dim}')
+                self.t = AnnoyIndex(int(dim), 'angular')
+                
+                for idx, line in tqdm(enumerate(in_f)):
+                    tmp = line.split()
+                    item = tmp[0]
+                    self.item_idx[item] = idx
+                    self.item_idx_reverse[idx] = item
+
+                self.t = AnnoyIndex(int(dim), 'angular')
+                self.t.load(f'{file_name}.ann')
+        else:
+            Y = []
+            with open(self.config['train_file'], 'r') as in_f:
+                for idx, line in tqdm(enumerate(in_f)):
+                    items_list = line.strip().split()
+                    Y.append([self.__get_id(item) for item in items_list])
+            # construct the sparse matrix
+            indptr = np.fromiter(chain((0,), map(len, Y)), int, len(Y) + 1).cumsum()
+            indices = np.fromiter(chain.from_iterable(Y), int, indptr[-1])
+            data = np.ones_like(indices)
+            user_item_table_csr = csr_matrix((data, indices, indptr))
+            item_user_table_csr = user_item_table_csr.T.tocsr()
+            print('Matrix size : ', item_user_table_csr.shape)
+            print("Train finished ... : ", time.time() - b_time)
+
+            # Train MF
+            model_name = "bpr"
+            self.model = BayesianPersonalizedRanking(num_threads=20)
+            print("training model %s", model_name)
+            start = time.time()
+            self.model.fit(item_user_table_csr)
+            print("trained model '%s' in %s", model_name, time.time() - start)
+            print("calculating top movies")
+
+            items_count, dim = self.model.item_factors.shape
+            # Build Ann
+            self.t = AnnoyIndex(int(dim), 'angular')
+            
+            with open(config['item_vec_file']) as out_f:
+                print(f"{items_count} {dim}", file=out_f)
+                for idx, vec in tqdm(enumerate(self.model.item_factors)):
+                    self.t.add_item(idx, vec)
+                    print(f"{self.item_idx_reverse[idx]} {' '.join(vec.astype(str))}", file=out_f)
+
+            print("Read file finished ...")
+            file_name = self.config['index_file_file']
+
+            self.t.build(30) # 10 trees
+            self.t.save(f'{file_name}.ann')
+
+        print(f"Train finished ...{time.time() - b_time}")
 
 
     def predict(self, last_n_events, topN):
@@ -141,7 +160,9 @@ if __name__ == '__main__':
         'lastN': 10, 
         'topN': 10,
         'train_file': '../data/2020-06-30-all/w2v_tr_data/merged.data',
-        'index_file_file': '../tmp/BRP_item'
+        'item_vec_file': '/mnt1/train/model/MF_BRP_model.vec',
+        'index_file_file': '../tmp/BRP_item',
+        'reload' : False
     }
     model = MF_kNN(config)
     model.train()
