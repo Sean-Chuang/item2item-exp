@@ -63,7 +63,7 @@ def main(file_name, dt, session=3600):
 
 if __name__ == '__main__':
     dt = '2020-08-01'
-    data_f = f"data/{dt}/marged.data"
-    main(data_f)
+    data_f = f"data/{dt}/merged.data"
+    main(data_f, dt)
     # result = solr_handler.search(["okoku:11498247", "okoku:11499222", "okoku:11485043"])
     # print(result.raw_response['response'])
