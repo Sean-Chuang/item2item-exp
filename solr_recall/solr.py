@@ -21,11 +21,10 @@ class i2i_solr:
 
 
 solr_handler = i2i_solr('127.0.0.1:8983', 'i2i_demo')
+MIN_SESSION_NUM = 3
 
-
-def main(file_name, session=3600):
+def main(file_name, dt, session=3600):
     solr_handler.delete_all()
-    dt = '2020-08-01'
     with open(file_name, 'r') as in_f:
         for line in tqdm(in_f):
             user, behaviors = line.strip().split('\t')
@@ -41,6 +40,8 @@ def main(file_name, session=3600):
                 
             start_idx.append(len(sess_data))
             for idx in range(len(start_idx)-1):
+                if start_idx[idx+1] - start_idx[idx] <= MIN_SESSION_NUM:
+                    continue
                 data = {
                     'id': f"{user}_{dt}_{len(user_data)}",
                     'uid': user,
@@ -50,13 +51,12 @@ def main(file_name, session=3600):
                 user_data.append(data)
 
             solr_handler.insert(user_data)
-
-
-
+            break
 
 
 if __name__ == '__main__':
-    data_f = "data/test.csv"
+    dt = '2020-08-01'
+    data_f = f"data/{dt}/marged.data"
     main(data_f)
     # result = solr_handler.search(["okoku:11498247", "okoku:11499222", "okoku:11485043"])
     # print(result.raw_response['response'])
