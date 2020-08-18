@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+from tqdm import tqdm
 import pysolr
 
 class i2i_solr:
@@ -8,34 +8,38 @@ class i2i_solr:
         self.solr = pysolr.Solr(f"http://{host}/solr/{core}", timeout=10)
 
     def insert(self, data_list):
-        self.solr.add(data_list)
+        self.solr.add(data_list, commit=True)
 
     def search(self, history_list):
+        history_list = [item.replace(':', '_') for item in history_list]
         h_string = ' '.join(history_list)
-        res = self.solr.search("session:h_string")
+        res = self.solr.search(h_string)
         return res
 
+    def delete_all(self):
+        self.solr.delete(q='*:*')
+
+
+solr_handler = i2i_solr('127.0.0.1:8983', 'i2i_demo')
 
 
 def main(file_name, session=3600):
-    solr_handler = i2i_solr('127.0.0.1:8983', 'i2i_demo')
+    solr_handler.delete_all()
     dt = '2020-08-01'
     with open(file_name, 'r') as in_f:
-        for line in in_f:
+        for line in tqdm(in_f):
             user, behaviors = line.strip().split('\t')
             user_data = []
             behavior_list = [tuple(items.split('@')) for items in behaviors.split(',')]
             sess_data = []
             start_idx = [0]
             for index, (_item_id, _type, ts) in enumerate(behavior_list):
-                sess_data.append(_item_id)
+                sess_data.append(_item_id.replace(':', '_'))
                 if index == 0:  continue
                 if int(ts) - int(behavior_list[index-1][-1]) >= session:
                     start_idx.append(index)
                 
             start_idx.append(len(sess_data))
-            print(start_idx)
-            print(sess_data)
             for idx in range(len(start_idx)-1):
                 data = {
                     'id': f"{user}_{dt}_{len(user_data)}",
@@ -45,9 +49,8 @@ def main(file_name, session=3600):
                 }
                 user_data.append(data)
 
-            print(user_data)
             solr_handler.insert(user_data)
-            break
+
 
 
 
@@ -55,3 +58,5 @@ def main(file_name, session=3600):
 if __name__ == '__main__':
     data_f = "data/test.csv"
     main(data_f)
+    # result = solr_handler.search(["okoku:11498247", "okoku:11499222", "okoku:11485043"])
+    # print(result.raw_response['response'])
