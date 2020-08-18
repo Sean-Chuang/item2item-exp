@@ -17,7 +17,7 @@ class i2i_solr:
         return res
 
     def commit(self):
-        self.solr.commmit()
+        self.solr.commit()
 
     def delete_all(self):
         self.solr.delete(q='*:*')
@@ -43,12 +43,14 @@ def main(file_name, dt, session=3600):
                 
             start_idx.append(len(sess_data))
             for idx in range(len(start_idx)-1):
-                if start_idx[idx+1] - start_idx[idx] <= MIN_SESSION_NUM:
+                sess = set(sess_data[start_idx[idx]:start_idx[idx+1]])
+                if len(sess) <= MIN_SESSION_NUM:
                     continue
+
                 data = {
                     'id': f"{user}_{dt}_{len(user_data)}",
                     'uid': user,
-                    'session': ' '.join(sess_data[start_idx[idx]:start_idx[idx+1]]),
+                    'session': ' '.join(sess),
                     'date': dt
                 }
                 user_data.append(data)
