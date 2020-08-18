@@ -7,14 +7,17 @@ class i2i_solr:
     def __init__(self, host, core):
         self.solr = pysolr.Solr(f"http://{host}/solr/{core}", timeout=10)
 
-    def insert(self, data_list):
-        self.solr.add(data_list, commit=True)
+    def insert(self, data_list, commit=False):
+        self.solr.add(data_list, commit)
 
     def search(self, history_list):
         history_list = [item.replace(':', '_') for item in history_list]
         h_string = ' '.join(history_list)
         res = self.solr.search(h_string)
         return res
+
+    def commit(self):
+        self.solr.commmit()
 
     def delete_all(self):
         self.solr.delete(q='*:*')
@@ -26,7 +29,7 @@ MIN_SESSION_NUM = 3
 def main(file_name, dt, session=3600):
     solr_handler.delete_all()
     with open(file_name, 'r') as in_f:
-        for line in tqdm(in_f):
+        for i, line in tqdm(enumerate(in_f)):
             user, behaviors = line.strip().split('\t')
             user_data = []
             behavior_list = [tuple(items.split('@')) for items in behaviors.split(',')]
@@ -50,8 +53,12 @@ def main(file_name, dt, session=3600):
                 }
                 user_data.append(data)
 
-            solr_handler.insert(user_data)
-            break
+            if user_data:
+                solr_handler.insert(user_data)
+
+            if i!=0 and i%100000 == 0:
+                solr_handler.commit()
+                print(f"finished totol user {i}")
 
 
 if __name__ == '__main__':
