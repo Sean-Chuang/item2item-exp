@@ -7,8 +7,8 @@ class i2i_solr:
     def __init__(self, host, core):
         self.solr = pysolr.Solr(f"http://{host}/solr/{core}", timeout=10)
 
-    def insert(self, data_list):
-        self.solr.add(data_list, commit=True)
+    def insert(self, data_list, commit=False):
+        self.solr.add(data_list, commit)
 
     def search(self, history_list):
         history_list = [item.replace(':', '_') for item in history_list]
@@ -16,18 +16,20 @@ class i2i_solr:
         res = self.solr.search(h_string)
         return res
 
+    def commit(self):
+        self.solr.commit()
+
     def delete_all(self):
         self.solr.delete(q='*:*')
 
 
 solr_handler = i2i_solr('127.0.0.1:8983', 'i2i_demo')
+MIN_SESSION_NUM = 3
 
-
-def main(file_name, session=3600):
+def main(file_name, dt, session=3600):
     solr_handler.delete_all()
-    dt = '2020-08-01'
     with open(file_name, 'r') as in_f:
-        for line in tqdm(in_f):
+        for i, line in tqdm(enumerate(in_f)):
             user, behaviors = line.strip().split('\t')
             user_data = []
             behavior_list = [tuple(items.split('@')) for items in behaviors.split(',')]
@@ -41,22 +43,29 @@ def main(file_name, session=3600):
                 
             start_idx.append(len(sess_data))
             for idx in range(len(start_idx)-1):
+                sess = set(sess_data[start_idx[idx]:start_idx[idx+1]])
+                if len(sess) <= MIN_SESSION_NUM:
+                    continue
+
                 data = {
                     'id': f"{user}_{dt}_{len(user_data)}",
                     'uid': user,
-                    'session': ' '.join(sess_data[start_idx[idx]:start_idx[idx+1]]),
+                    'session': ' '.join(sess),
                     'date': dt
                 }
                 user_data.append(data)
 
-            solr_handler.insert(user_data)
+            if user_data:
+                solr_handler.insert(user_data)
 
-
-
+            if i!=0 and i%100000 == 0:
+                solr_handler.commit()
+                print(f"finished totol user {i}")
 
 
 if __name__ == '__main__':
-    data_f = "data/test.csv"
-    main(data_f)
+    dt = '2020-08-01'
+    data_f = f"data/{dt}/merged.data"
+    main(data_f, dt)
     # result = solr_handler.search(["okoku:11498247", "okoku:11499222", "okoku:11485043"])
     # print(result.raw_response['response'])
