@@ -27,9 +27,9 @@ def swing(user_items):
             inter_items = user_items[u]&user_items[v]
             for i in inter_items:
                 for j in inter_items:
-                    if j == i:
-                        continue
-                    if j not in user_items[i]:
+                    # if j == i:
+                    #     continue
+                    if j not in u2Swing[i]:
                         u2Swing[i][j] = 0
                     u2Swing[i][j] += (wu * wv / (1 + len(inter_items)))
 
