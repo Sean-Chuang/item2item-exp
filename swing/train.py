@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 from collections import defaultdict
 from tqdm import tqdm
@@ -35,12 +36,10 @@ def swing(user_items):
     return u2Swing
 
 
-def main():
-
-
 
 if __name__ == '__main__':
-    data_f = "data/test.csv"
+    dt = '2020-08-01'
+    data_f = f"../solr_recall/data/{dt}/merged.data"
     user_behavir = get_user_behavir(data_f)
     sim_res = swing(user_behavir)
     pickle.dump(sim_res, open( "swing_sim.pkl", "wb" ))
