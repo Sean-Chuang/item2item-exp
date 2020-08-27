@@ -30,8 +30,8 @@ def swing(user_items):
                     if j == i:
                         continue
                     if j not in user_items[i]:
-                        user_items[i][j] = 0
-                    user_items[i][j] += (wu * wv / (1 + len(inter_items)))
+                        u2Swing[i][j] = 0
+                    u2Swing[i][j] += (wu * wv / (1 + len(inter_items)))
 
     return u2Swing
 
