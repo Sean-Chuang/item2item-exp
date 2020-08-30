@@ -18,7 +18,7 @@ with data as (
             split(element_at(atp.data, 'content_ids')[1], ',') as content_ids, 
             element_at(atp.data, 'exid')[1] as ad_id,
             element_at(atp.data, 'e')[1] as behavior_types,
-            ts
+            cast(ts as varchar) as ts
         from hive_ad.default.ad_pixel atp
         where atp.dt > date_format(date_add('day', -10, date('2020-08-01')),'%Y-%m-%d')
             and atp.dt <= '2020-08-01'

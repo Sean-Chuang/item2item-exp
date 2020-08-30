@@ -13,7 +13,7 @@ class i2i_solr:
     def search(self, history_list):
         history_list = [item.replace(':', '_') for item in history_list]
         h_string = ' '.join(history_list)
-        res = self.solr.search(h_string)
+        res = self.solr.search(h_string, fl='session,score', rows=200)
         return res
 
     def commit(self):
@@ -64,8 +64,8 @@ def main(file_name, dt, session=3600):
 
 
 if __name__ == '__main__':
-    dt = '2020-08-01'
-    data_f = f"data/{dt}/merged.data"
-    main(data_f, dt)
-    # result = solr_handler.search(["okoku:11498247", "okoku:11499222", "okoku:11485043"])
-    # print(result.raw_response['response'])
+    # dt = '2020-08-01'
+    # data_f = f"data/{dt}/merged.data"
+    # main(data_f, dt)
+    result = solr_handler.search(["okoku:11498247", "okoku:11499222", "okoku:11485043"])
+    print(result.raw_response['response']['docs'])
